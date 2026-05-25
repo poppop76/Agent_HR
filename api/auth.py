@@ -9,7 +9,7 @@ from schemas.user_schema import UserLoginSchema
 from core.jwt_config import create_access_token
 from datetime import timedelta
 from core.redis_client import redis_client
-from schemas.user_response_schema import UserLoginResponseSchema
+from schemas.user_response_schema import UserLoginRequestSchema
 import json
 # import logging
 #
@@ -54,7 +54,7 @@ def login(user_login: UserLoginSchema,
         "role": user.role
     }
 
-    result = UserLoginResponseSchema(
+    result = UserLoginRequestSchema(
         token = token,
         user = userInfo,
     )
