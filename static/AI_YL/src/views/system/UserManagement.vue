@@ -33,7 +33,11 @@
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="createdAt" label="创建时间" />
+          <el-table-column label="创建时间">
+            <template #default="{ row }">
+              {{ row.createdAt || row.created_at || '-' }}
+            </template>
+          </el-table-column>
           <el-table-column label="操作" width="220" fixed="right">
             <template #default="{ row }">
               <el-button size="small" type="primary" @click="openEditDialog(row)">编辑</el-button>
