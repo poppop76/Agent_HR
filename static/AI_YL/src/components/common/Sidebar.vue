@@ -96,6 +96,8 @@ const menuItems = computed(() => {
   
   if (authStore.isAdmin) {
     items.push({ path: '/system/user-management', title: '用户管理', icon: 'User' })
+    items.push({ path: '/system/department-management', title: '部门管理', icon: 'OfficeBuilding' })
+    items.push({ path: '/system/category-manage', title: '类别管理', icon: 'Collection' })
     items.push({ path: '/system/weight-config', title: '权重配置', icon: 'Setting' })
   }
   

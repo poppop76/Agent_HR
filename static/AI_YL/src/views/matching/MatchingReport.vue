@@ -8,10 +8,11 @@
       
       <div class="report-header">
         <el-descriptions :column="2" border>
-          <el-descriptions-item label="候选人">{{ report.candidateName || '未知候选人' }}</el-descriptions-item>
-          <el-descriptions-item label="目标岗位">{{ report.jobName || '未知岗位' }}</el-descriptions-item>
-          <el-descriptions-item label="匹配时间">{{ report.matchTime || '未知时间' }}</el-descriptions-item>
-          <el-descriptions-item label="总分">
+          <el-descriptions-item label="候选人">{{ report.candidateInfo?.name || '未知候选人' }}</el-descriptions-item>
+          <el-descriptions-item label="目标岗位">{{ report.jobInfo?.name || '未知岗位' }}</el-descriptions-item>
+          <el-descriptions-item label="候选人学历">{{ report.candidateInfo?.education || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="工作年限">{{ report.candidateInfo?.workYears ? report.candidateInfo.workYears + '年' : '-' }}</el-descriptions-item>
+          <el-descriptions-item label="总分" :span="2">
             <span :class="getScoreClass(report.totalScore)" class="total-score">
               {{ report.totalScore || '0' }}
             </span>
@@ -34,11 +35,11 @@
                   <el-icon :size="24" :color="dimension.color"><component :is="dimension.icon" /></el-icon>
                   <span>{{ dimension.name }}</span>
                 </div>
-                <div class="dimension-score" :class="getScoreClass(report[dimension.key])">
-                  {{ report[dimension.key] || '0' }}
+                <div class="dimension-score" :class="getScoreClass(report.dimensionScores?.[dimension.key] || 0)">
+                  {{ report.dimensionScores?.[dimension.key] || '0' }}
                 </div>
                 <el-progress 
-                  :percentage="report[dimension.key] || 0" 
+                  :percentage="report.dimensionScores?.[dimension.key] || 0" 
                   :color="dimension.color"
                   :stroke-width="8"
                 />
@@ -103,7 +104,14 @@
     <div class="card-container">
       <h3 class="subsection-title">不足之处</h3>
       <ul class="highlights-list">
-        <li v-for="(item, index) in report.weaknesses" :key="index">{{ item || '暂无不足' }}</li>
+        <li v-for="(item, index) in report.shortcomings" :key="index">{{ item || '暂无不足' }}</li>
+      </ul>
+    </div>
+    
+    <div v-if="report.suggestions && report.suggestions.length" class="card-container">
+      <h3 class="subsection-title">建议</h3>
+      <ul class="highlights-list">
+        <li v-for="(item, index) in report.suggestions" :key="index">{{ item || '暂无建议' }}</li>
       </ul>
     </div>
   </div>
@@ -125,10 +133,10 @@ const radarChartRef = ref(null)
 let radarChart = null
 
 const dimensions = [
-  { name: '技能匹配', key: 'skillScore', color: '#52C41A', icon: 'Trophy' },
-  { name: '经验匹配', key: 'experienceScore', color: '#1890FF', icon: 'Briefcase' },
-  { name: '学历匹配', key: 'educationScore', color: '#FA8C16', icon: 'School' },
-  { name: '项目匹配', key: 'projectScore', color: '#FF4D4F', icon: 'FolderOpened' }
+  { name: '技能匹配', key: 'skill', color: '#52C41A', icon: 'Trophy' },
+  { name: '经验匹配', key: 'experience', color: '#1890FF', icon: 'Briefcase' },
+  { name: '学历匹配', key: 'education', color: '#FA8C16', icon: 'School' },
+  { name: '项目匹配', key: 'project', color: '#FF4D4F', icon: 'FolderOpened' }
 ]
 
 const comparisonData = computed(() => {
@@ -184,7 +192,7 @@ const initRadarChart = () => {
     series: [{
       type: 'radar',
       data: [{
-        value: dimensions.map(d => report.value[d.key] || 0),
+        value: dimensions.map(d => report.value.dimensionScores?.[d.key] || 0),
         name: '匹配度',
         itemStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 1, 1, [

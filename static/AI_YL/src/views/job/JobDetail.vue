@@ -37,7 +37,7 @@
               <div class="info-item">
                 <span class="info-label">岗位类别</span>
                 <span class="info-value">
-                  <el-tag v-if="job.jobType" :type="getJobTypeTagType(job.jobType)" effect="dark" size="small">{{ job.jobTypeDesc || job.jobType }}</el-tag>
+                  <el-tag v-if="job.jobType" :type="getJobTypeTagType(job.jobType)" effect="dark" size="small">{{ getJobTypeDesc(job.jobType) }}</el-tag>
                   <span v-else class="info-value-text">未设置</span>
                 </span>
               </div>
@@ -132,7 +132,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { jobApi } from '@/api'
+import { jobApi, categoryApi } from '@/api'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
 import { Edit, ArrowLeft, Connection, User } from '@element-plus/icons-vue'
@@ -148,23 +148,42 @@ const trendChartRef = ref(null)
 let scoreChart = null
 let trendChart = null
 
+const categories = ref([])
+
 const getJobTypeTagType = (jobType) => {
-  const map = { technical: 'success', management: 'warning', operation: 'primary', administrative: 'info' }
-  return map[jobType] || ''
+  const cat = categories.value.find(c => c.code === jobType)
+  if (!cat) return ''
+  const map = { technical: 'success', product: 'primary', marketing: 'warning', hr: 'info', finance: 'danger', admin: '' }
+  return map[cat.code] || ''
+}
+
+const getJobTypeDesc = (jobType) => {
+  const cat = categories.value.find(c => c.code === jobType)
+  return cat ? cat.name : jobType
 }
 
 const fetchJobDetail = async () => {
   try {
-    const res = await jobApi.getJobList({ page: 1, pageSize: 100 })
-    const jobData = res.data.list.find(j => j.id === Number(route.params.id))
+    const res = await jobApi.getJobDetail(Number(route.params.id))
+    const jobData = res.data
     if (jobData) {
       job.value = jobData
+      relatedResumes.value = jobData.relatedResumes || []
       initCharts(jobData)
     } else {
       ElMessage.error('岗位不存在')
     }
   } catch (error) {
     ElMessage.error('获取岗位详情失败')
+  }
+}
+
+const fetchCategories = async () => {
+  try {
+    const res = await categoryApi.getCategoryList()
+    categories.value = res.data.filter(c => c.status == 1)
+  } catch (error) {
+    console.error('获取类别列表失败')
   }
 }
 
@@ -286,10 +305,8 @@ const handleResize = () => {
 }
 
 onMounted(() => {
+  fetchCategories()
   fetchJobDetail()
-  setTimeout(() => {
-    initCharts()
-  }, 300)
   window.addEventListener('resize', handleResize)
 })
 

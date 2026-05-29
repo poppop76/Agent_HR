@@ -18,7 +18,7 @@
       <div class="search-card glass-card">
         <el-form :inline="true" :model="searchForm" class="search-form">
           <el-form-item label="岗位名称">
-            <el-input v-model="searchForm.name" placeholder="请输入岗位名称" clearable class="custom-input" />
+            <el-input v-model="searchForm.keyword" placeholder="请输入岗位名称" clearable class="custom-input" />
           </el-form-item>
           <el-form-item label="部门">
             <el-select v-model="searchForm.department" placeholder="请选择部门" clearable class="custom-select">
@@ -26,7 +26,7 @@
             </el-select>
           </el-form-item>
           <el-form-item label="分类">
-            <el-select v-model="searchForm.category" placeholder="请选择分类" clearable class="custom-select">
+            <el-select v-model="searchForm.jobType" placeholder="请选择分类" clearable class="custom-select">
               <el-option label="技术岗" value="技术岗" />
               <el-option label="职能岗" value="职能岗" />
               <el-option label="销售岗" value="销售岗" />
@@ -96,9 +96,9 @@ const pageSize = ref(10)
 const total = ref(0)
 
 const searchForm = reactive({
-  name: '',
+  keyword: '',
   department: '',
-  category: ''
+  jobType: ''
 })
 
 const fetchJobs = async () => {
@@ -119,17 +119,16 @@ const fetchJobs = async () => {
 }
 
 const resetSearch = () => {
-  searchForm.name = ''
+  searchForm.keyword = ''
   searchForm.department = ''
-  searchForm.category = ''
+  searchForm.jobType = ''
   page.value = 1
   fetchJobs()
 }
 
 const toggleStatus = async (row) => {
-  const newStatus = row.status === 'published' ? 'unpublished' : 'published'
   try {
-    await jobApi.updateJob(row.id, { status: newStatus })
+    await jobApi.toggleJobStatus(row.id)
     ElMessage.success('操作成功')
     fetchJobs()
   } catch (error) {
@@ -296,6 +295,8 @@ onMounted(() => {
 
 .custom-input,
 .custom-select {
+  width: 200px;
+  
   :deep(.el-input__wrapper),
   :deep(.el-select__wrapper) {
     background: rgba(255, 255, 255, 0.06);

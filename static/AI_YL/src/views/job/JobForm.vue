@@ -32,12 +32,9 @@
         >
           <el-row :gutter="20">
             <el-col :span="12">
-              <el-form-item label="岗位类别" prop="jobType">
+              <el-form-item label="岗位类别" prop="jobType" required>
                 <el-select v-model="form.jobType" placeholder="请选择岗位类别" class="custom-select">
-                  <el-option label="技术类" value="technical" />
-                  <el-option label="管理类" value="management" />
-                  <el-option label="运营类" value="operation" />
-                  <el-option label="行政类" value="administrative" />
+                  <el-option v-for="cat in categories" :key="cat.code" :label="cat.name" :value="cat.code" />
                 </el-select>
               </el-form-item>
             </el-col>
@@ -52,7 +49,7 @@
           
           <el-row :gutter="20">
             <el-col :span="12">
-              <el-form-item label="岗位名称" prop="name">
+              <el-form-item label="岗位名称" prop="name" required>
                 <el-input v-model="form.name" placeholder="请输入岗位名称" class="custom-input" />
               </el-form-item>
             </el-col>
@@ -67,7 +64,7 @@
             <el-input v-model="form.location" placeholder="请输入工作地点" class="custom-input" />
           </el-form-item>
           
-          <el-form-item label="岗位职责" prop="responsibilities">
+          <el-form-item label="岗位职责" prop="responsibilities" required>
             <el-input 
               v-model="form.responsibilities" 
               type="textarea" 
@@ -77,7 +74,7 @@
             />
           </el-form-item>
           
-          <el-form-item label="任职要求" prop="requirements">
+          <el-form-item label="任职要求" prop="requirements" required>
             <el-input 
               v-model="form.requirements" 
               type="textarea" 
@@ -104,7 +101,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { jobApi } from '@/api'
+import { jobApi, departmentApi, categoryApi } from '@/api'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft, Check } from '@element-plus/icons-vue'
 import ParticlesBackground from '@/components/ParticlesBackground.vue'
@@ -115,6 +112,7 @@ const route = useRoute()
 const formRef = ref(null)
 const loading = ref(false)
 const departments = ref([])
+const categories = ref([])
 
 const isEdit = computed(() => !!route.params.id)
 
@@ -131,9 +129,6 @@ const form = reactive({
 const rules = {
   name: [{ required: true, message: '请输入岗位名称', trigger: 'blur' }],
   jobType: [{ required: true, message: '请选择岗位类别', trigger: 'change' }],
-  department: [{ required: true, message: '请选择部门', trigger: 'change' }],
-  salary: [{ required: true, message: '请输入薪资范围', trigger: 'blur' }],
-  location: [{ required: true, message: '请输入工作地点', trigger: 'blur' }],
   responsibilities: [{ required: true, message: '请输入岗位职责', trigger: 'blur' }],
   requirements: [{ required: true, message: '请输入任职要求', trigger: 'blur' }]
 }
@@ -173,7 +168,27 @@ const handleSubmit = async () => {
   }
 }
 
+const fetchDepartments = async () => {
+  try {
+    const res = await departmentApi.getDepartmentList()
+    departments.value = res.data.map(d => d.name)
+  } catch (error) {
+    console.error('获取部门列表失败')
+  }
+}
+
+const fetchCategories = async () => {
+  try {
+    const res = await categoryApi.getCategoryList()
+    categories.value = res.data.filter(c => c.status == 1)
+  } catch (error) {
+    console.error('获取类别列表失败')
+  }
+}
+
 onMounted(() => {
+  fetchDepartments()
+  fetchCategories()
   if (isEdit.value) {
     fetchJobDetail()
   }

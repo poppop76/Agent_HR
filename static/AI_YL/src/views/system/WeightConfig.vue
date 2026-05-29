@@ -3,29 +3,21 @@
     <div class="page-header">
       <div class="header-content">
         <h1 class="page-title">匹配权重配置</h1>
-        <p class="page-subtitle">修改各岗位类别的人岗匹配权重参数（添加岗位时自动创建默认权重）</p>
+        <p class="page-subtitle">按岗位类别配置人岗匹配权重参数</p>
       </div>
     </div>
     
     <div class="page-content">
-      <el-alert
-        title="提示：添加岗位时会自动创建默认权重配置，此处仅支持修改已有配置"
-        type="info"
-        :closable="false"
-        show-icon
-        class="tip-alert"
-      />
-      
       <div v-loading="loading" class="weight-cards">
-        <el-empty v-if="!loading && weightList.length === 0" description="暂无权重配置，请先添加岗位" />
+        <el-empty v-if="!loading && weightList.length === 0" description="暂无权重配置，请先添加岗位类别" />
         
         <div v-for="item in weightList" :key="item.id" class="weight-card glass-card">
           <div class="card-header">
             <div class="card-title-area">
-              <el-tag :type="getTagType(item.jobType)" effect="dark" size="large">
-                {{ item.jobType }}
+              <el-tag :type="getTagType(item.code)" effect="dark" size="large">
+                {{ item.name }}
               </el-tag>
-              <span class="job-type-desc">{{ item.jobTypeDesc }}</span>
+              <span class="job-type-desc">{{ item.description || '' }}</span>
             </div>
             <el-button 
               type="primary" 
@@ -35,8 +27,8 @@
             >编辑</el-button>
           </div>
           
-          <div class="weight-bars">
-            <div class="weight-bar-item" v-for="bar in getWeightBars(item)" :key="bar.label">
+          <div v-if="item.weight" class="weight-bars">
+            <div class="weight-bar-item" v-for="bar in getWeightBars(item.weight)" :key="bar.label">
               <div class="bar-header">
                 <span class="bar-label">{{ bar.label }}</span>
                 <span class="bar-value">{{ (bar.value * 100).toFixed(0) }}%</span>
@@ -49,9 +41,10 @@
               />
             </div>
           </div>
+          <div v-else class="no-weight">暂无权重配置</div>
           
-          <div class="weight-total">
-            权重合计：{{ getTotal(item) }}%
+          <div v-if="item.weight" class="weight-total">
+            权重合计：{{ getTotal(item.weight) }}%
           </div>
         </div>
       </div>
@@ -71,13 +64,9 @@
         class="edit-form"
       >
         <el-form-item label="岗位类别">
-          <el-tag :type="getTagType(editingItem.jobType)" effect="dark" size="large">
-            {{ editingItem.jobType }}
+          <el-tag :type="getTagType(editingItem.code)" effect="dark" size="large">
+            {{ editingItem.name }}
           </el-tag>
-        </el-form-item>
-        
-        <el-form-item label="类别描述">
-          <el-input v-model="editingItem.jobTypeDesc" placeholder="请输入类别描述" />
         </el-form-item>
         
         <el-divider content-position="left">权重配置（合计必须为100%）</el-divider>
@@ -145,7 +134,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { weightApi } from '@/api'
+import { categoryApi } from '@/api'
 import { ElMessage } from 'element-plus'
 import { Edit } from '@element-plus/icons-vue'
 
@@ -162,24 +151,24 @@ const totalClass = computed(() => {
   return 'total-error'
 })
 
-const getTagType = (jobType) => {
+const getTagType = (code) => {
   const map = {
-    '技术研发': 'success',
-    '产品设计': 'primary',
-    '市场营销': 'warning',
-    '人力资源': 'info',
-    '财务管理': 'danger',
-    '行政管理': ''
+    technical: 'success',
+    product: 'primary',
+    marketing: 'warning',
+    hr: 'info',
+    finance: 'danger',
+    admin: ''
   }
-  return map[jobType] || ''
+  return map[code] || ''
 }
 
-const getWeightBars = (item) => {
+const getWeightBars = (weight) => {
   return [
-    { label: '技能权重', value: item.skillWeight, color: '#52C41A' },
-    { label: '经验权重', value: item.experienceWeight, color: '#1890FF' },
-    { label: '学历权重', value: item.educationWeight, color: '#FA8C16' },
-    { label: '项目权重', value: item.projectWeight, color: '#FF4D4F' }
+    { label: '技能权重', value: weight.skillWeight, color: '#52C41A' },
+    { label: '经验权重', value: weight.experienceWeight, color: '#1890FF' },
+    { label: '学历权重', value: weight.educationWeight, color: '#FA8C16' },
+    { label: '项目权重', value: weight.projectWeight, color: '#FF4D4F' }
   ]
 }
 
@@ -193,7 +182,7 @@ const getTotal = (item) => {
 const fetchWeights = async () => {
   loading.value = true
   try {
-    const res = await weightApi.getWeightList()
+    const res = await categoryApi.getCategoryList()
     weightList.value = res.data
   } catch (error) {
     ElMessage.error('获取权重配置失败')
@@ -203,7 +192,19 @@ const fetchWeights = async () => {
 }
 
 const openEditDialog = (item) => {
-  editingItem.value = { ...item }
+  if (!item.weight) {
+    ElMessage.warning('该类别暂无权重配置')
+    return
+  }
+  editingItem.value = {
+    id: item.id,
+    code: item.code,
+    name: item.name,
+    skillWeight: item.weight.skillWeight,
+    experienceWeight: item.weight.experienceWeight,
+    educationWeight: item.weight.educationWeight,
+    projectWeight: item.weight.projectWeight
+  }
   dialogVisible.value = true
 }
 
@@ -215,8 +216,7 @@ const handleSave = async () => {
   
   saving.value = true
   try {
-    await weightApi.updateWeight(editingItem.value.id, {
-      jobTypeDesc: editingItem.value.jobTypeDesc,
+    await categoryApi.updateCategoryWeight(editingItem.value.id, {
       skillWeight: editingItem.value.skillWeight,
       experienceWeight: editingItem.value.experienceWeight,
       educationWeight: editingItem.value.educationWeight,
@@ -272,10 +272,6 @@ onMounted(() => {
   padding: 24px;
   position: relative;
   z-index: 1;
-}
-
-.tip-alert {
-  margin-bottom: 24px;
 }
 
 .weight-cards {
@@ -341,6 +337,13 @@ onMounted(() => {
     font-weight: 700;
     color: var(--primary-color);
   }
+}
+
+.no-weight {
+  text-align: center;
+  padding: 20px;
+  color: var(--text-tertiary);
+  font-size: 14px;
 }
 
 .weight-total {

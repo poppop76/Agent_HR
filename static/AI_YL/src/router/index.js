@@ -111,6 +111,12 @@ const routes = [
         meta: { title: '人才预测', icon: 'TrendCharts' }
       },
       {
+        path: 'system/category-manage',
+        name: 'CategoryManage',
+        component: () => import('@/views/system/CategoryManage.vue'),
+        meta: { title: '类别管理', icon: 'Collection', requiresAdmin: true }
+      },
+      {
         path: 'system/weight-config',
         name: 'WeightConfig',
         component: () => import('@/views/system/WeightConfig.vue'),
@@ -121,6 +127,12 @@ const routes = [
         name: 'UserManagement',
         component: () => import('@/views/system/UserManagement.vue'),
         meta: { title: '用户管理', icon: 'User', requiresAdmin: true }
+      },
+      {
+        path: 'system/department-management',
+        name: 'DepartmentManagement',
+        component: () => import('@/views/system/DepartmentManagement.vue'),
+        meta: { title: '部门管理', icon: 'OfficeBuilding', requiresAdmin: true }
       }
     ]
   }
@@ -142,10 +154,11 @@ router.beforeEach((to, from, next) => {
   document.title = `${to.meta.title || ''} - HR智能简历解析系统`
   
   const authStore = useAuthStore()
+  const hasToken = authStore.token || localStorage.getItem('token')
   
-  if (to.meta.requiresAuth !== false && !authStore.isLoggedIn) {
+  if (to.meta.requiresAuth !== false && !hasToken) {
     next({ name: 'Login', query: { redirect: to.fullPath } })
-  } else if (to.meta.requiresAdmin && !authStore.isAdmin) {
+  } else if (to.meta.requiresAdmin && authStore.userInfo.role !== 'admin') {
     next({ name: 'Dashboard' })
   } else {
     next()

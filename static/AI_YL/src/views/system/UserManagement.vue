@@ -124,21 +124,14 @@ const rules = {
   role: [{ required: true, message: '请选择角色', trigger: 'change' }]
 }
 
-// Mock 数据（后端未实现时使用）
-const MOCK_USERS = [
-  { id: 1, username: 'admin', name: '系统管理员', role: 'admin', status: 1, createdAt: '2025-01-01 00:00:00' },
-  { id: 2, username: 'hr', name: 'HR专员', role: 'hr', status: 1, createdAt: '2025-01-01 00:00:00' }
-]
-
 const fetchUsers = async () => {
   loading.value = true
   try {
     const res = await userApi.getUserList()
     userList.value = res.data
   } catch (error) {
-    // 后端未实现时使用 mock 数据
-    console.log('使用 mock 用户数据')
-    userList.value = MOCK_USERS
+    ElMessage.error('获取用户列表失败')
+    userList.value = []
   } finally {
     loading.value = false
   }

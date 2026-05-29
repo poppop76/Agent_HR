@@ -17,18 +17,18 @@
     <div class="page-content">
       <div class="search-card glass-card">
         <el-form :inline="true" :model="searchForm" class="search-form">
-          <el-form-item label="姓名">
-            <el-input v-model="searchForm.name" placeholder="请输入姓名" clearable class="custom-input" />
+          <el-form-item label="文件名">
+            <el-input v-model="searchForm.keyword" placeholder="请输入文件名" clearable class="custom-input" />
           </el-form-item>
-          <el-form-item label="岗位">
-            <el-input v-model="searchForm.job" placeholder="请输入岗位" clearable class="custom-input" />
+          <el-form-item label="候选人">
+            <el-input v-model="searchForm.name" placeholder="请输入候选人姓名" clearable class="custom-input" />
           </el-form-item>
-          <el-form-item label="状态">
-            <el-select v-model="searchForm.status" placeholder="请选择状态" clearable class="custom-select">
-              <el-option label="未解析" value="pending" />
-              <el-option label="解析中" value="parsing" />
+          <el-form-item label="解析状态">
+            <el-select v-model="searchForm.parseStatus" placeholder="请选择状态" clearable class="custom-select">
+              <el-option label="待解析" value="pending" />
+              <el-option label="解析中" value="processing" />
               <el-option label="解析成功" value="success" />
-              <el-option label="解析失败" value="failed" />
+              <el-option label="解析失败" value="fail" />
             </el-select>
           </el-form-item>
           <el-form-item>
@@ -45,18 +45,18 @@
           v-loading="loading" 
           class="glass-table"
         >
-          <el-table-column prop="name" label="姓名" />
+          <el-table-column prop="fileName" label="文件名" />
+          <el-table-column prop="name" label="候选人" />
           <el-table-column prop="phone" label="电话" />
-          <el-table-column prop="email" label="邮箱" />
-          <el-table-column prop="appliedJob" label="应聘岗位" />
-          <el-table-column prop="status" label="解析状态">
+          <el-table-column prop="education" label="学历" />
+          <el-table-column prop="parseStatus" label="解析状态">
             <template #default="{ row }">
-              <span :class="['status-badge', `status-${row.status}`]">
-                {{ getStatusText(row.status) }}
+              <span :class="['status-badge', `status-${row.parseStatus}`]">
+                {{ getStatusText(row.parseStatus) }}
               </span>
             </template>
           </el-table-column>
-          <el-table-column prop="createdAt" label="上传时间" />
+          <el-table-column prop="uploadedAt" label="上传时间" />
           <el-table-column label="操作" width="280">
             <template #default="{ row }">
               <el-button size="small" class="action-btn-small" @click="router.push(`/resumes/preview/${row.id}`)">预览</el-button>
@@ -97,9 +97,9 @@ const pageSize = ref(10)
 const total = ref(0)
 
 const searchForm = reactive({
+  keyword: '',
   name: '',
-  job: '',
-  status: ''
+  parseStatus: ''
 })
 
 const fetchResumes = async () => {
@@ -120,11 +120,16 @@ const fetchResumes = async () => {
 }
 
 const resetSearch = () => {
+  searchForm.keyword = ''
   searchForm.name = ''
-  searchForm.job = ''
-  searchForm.status = ''
+  searchForm.parseStatus = ''
   page.value = 1
   fetchResumes()
+}
+
+const getStatusText = (status) => {
+  const map = { pending: '待解析', processing: '解析中', success: '解析成功', fail: '解析失败' }
+  return map[status] || status
 }
 
 const handleReupload = (row) => {

@@ -32,7 +32,7 @@
           </el-form-item>
           
           <el-form-item label="候选人">
-            <el-select v-model="matchingForm.candidateIds" multiple placeholder="请选择候选人" class="custom-select">
+            <el-select v-model="matchingForm.resumeIds" multiple placeholder="请选择候选人" class="custom-select">
               <el-option v-for="candidate in candidates" :key="candidate.id" :label="candidate.name" :value="candidate.id" />
             </el-select>
           </el-form-item>
@@ -132,7 +132,7 @@ const loading = ref(false)
 
 const matchingForm = reactive({
   jobId: '',
-  candidateIds: []
+  resumeIds: []
 })
 
 const getScoreClass = (score) => {
@@ -162,7 +162,10 @@ const fetchJobs = async () => {
 const fetchCandidates = async () => {
   try {
     const res = await resumeApi.getResumeList({ pageSize: 100 })
-    candidates.value = res.data.list || []
+    candidates.value = res.data.list?.map(r => ({
+      id: r.id,
+      name: r.name || r.fileName
+    })) || []
   } catch (error) {
     console.error('获取候选人列表失败')
   }
@@ -173,7 +176,7 @@ const handleMatching = async () => {
     ElMessage.warning('请选择目标岗位')
     return
   }
-  if (matchingForm.candidateIds.length === 0) {
+  if (matchingForm.resumeIds.length === 0) {
     ElMessage.warning('请选择候选人')
     return
   }
@@ -182,14 +185,28 @@ const handleMatching = async () => {
   try {
     const res = await matchingApi.performMatching({
       jobId: matchingForm.jobId,
-      candidateIds: matchingForm.candidateIds
+      resumeIds: matchingForm.resumeIds
     })
-    matchingResults.value = res.data
-    ElMessage.success('匹配完成')
+    ElMessage.success('匹配任务已创建')
+    // 获取匹配结果
+    await fetchMatchingResults(matchingForm.jobId)
   } catch (error) {
     ElMessage.error('匹配失败')
   } finally {
     loading.value = false
+  }
+}
+
+const fetchMatchingResults = async (jobId) => {
+  try {
+    const res = await matchingApi.getMatchingResultList({
+      jobId,
+      page: 1,
+      pageSize: 100
+    })
+    matchingResults.value = res.data.list || []
+  } catch (error) {
+    console.error('获取匹配结果失败')
   }
 }
 
@@ -201,7 +218,7 @@ onMounted(() => {
     matchingForm.jobId = route.query.jobId
   }
   if (route.query.resumeId) {
-    matchingForm.candidateIds = [route.query.resumeId]
+    matchingForm.resumeIds = [route.query.resumeId]
   }
 })
 </script>

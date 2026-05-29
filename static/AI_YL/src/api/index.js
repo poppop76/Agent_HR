@@ -33,12 +33,34 @@ export const userApi = {
 }
 
 /**
+ * 部门管理接口
+ */
+export const departmentApi = {
+  // 获取部门列表
+  getDepartmentList() {
+    return api.get('/department/list')
+  },
+  // 添加部门
+  addDepartment(data) {
+    return api.post('/department/add', data)
+  },
+  // 更新部门
+  updateDepartment(id, data) {
+    return api.put(`/department/update/${id}`, data)
+  },
+  // 删除部门
+  deleteDepartment(id) {
+    return api.delete(`/department/delete/${id}`)
+  }
+}
+
+/**
  * 岗位管理接口
  */
 export const jobApi = {
   // 获取岗位列表
-  getJobList(params) {
-    return api.get('/job/list', { params })
+  getJobList(data) {
+    return api.post('/job/list', data)
   },
   // 新增岗位
   addJob(data) {
@@ -51,6 +73,14 @@ export const jobApi = {
   // 删除岗位
   deleteJob(id) {
     return api.delete(`/job/delete/${id}`)
+  },
+  // 上架/下架岗位
+  toggleJobStatus(id) {
+    return api.put(`/job/status/${id}`)
+  },
+  // 获取岗位详情
+  getJobDetail(id) {
+    return api.get(`/job/detail/${id}`)
   }
 }
 
@@ -59,9 +89,10 @@ export const jobApi = {
  */
 export const resumeApi = {
   // 上传简历
-  uploadResume(formData) {
+  uploadResume(formData, config = {}) {
     return api.post('/resume/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
+      headers: { 'Content-Type': 'multipart/form-data' },
+      ...config
     })
   },
   // 获取简历列表
@@ -153,15 +184,27 @@ export const statisticsApi = {
 }
 
 /**
- * 权重配置接口（仅管理员）
+ * 岗位类别接口
  */
-export const weightApi = {
-  // 获取所有权重配置
-  getWeightList() {
-    return api.get('/weight/list')
+export const categoryApi = {
+  // 获取类别列表
+  getCategoryList() {
+    return api.get('/category/list')
   },
-  // 更新权重配置
-  updateWeight(id, data) {
-    return api.put(`/weight/update/${id}`, data)
+  // 添加类别
+  addCategory(data) {
+    return api.post('/category/add', data)
+  },
+  // 更新类别
+  updateCategory(id, data) {
+    return api.put(`/category/update/${id}`, data)
+  },
+  // 删除类别
+  deleteCategory(id) {
+    return api.delete(`/category/delete/${id}`)
+  },
+  // 更新类别权重
+  updateCategoryWeight(id, data) {
+    return api.put(`/category/weight/${id}`, data)
   }
 }

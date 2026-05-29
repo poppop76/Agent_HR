@@ -224,13 +224,13 @@
                 </div>
                 <div class="recent-item-info">
                   <h4>{{ item.fileName || '未知文件' }}</h4>
-                  <p>{{ item.fileType || '未知类型' }}</p>
+                  <p>{{ item.name || '未解析候选人' }}</p>
                 </div>
                 <div class="recent-item-status">
-                  <el-tag :type="item.parseStatus === 'success' ? 'success' : 'warning'" size="small">
-                    {{ item.parseStatus === 'success' ? '解析成功' : item.parseStatus === 'processing' ? '解析中' : '待解析' }}
+                  <el-tag :type="item.parseStatus === 'success' ? 'success' : item.parseStatus === 'processing' ? 'warning' : 'info'" size="small">
+                    {{ item.parseStatus === 'success' ? '解析成功' : item.parseStatus === 'processing' ? '解析中' : item.parseStatus === 'fail' ? '解析失败' : '待解析' }}
                   </el-tag>
-                  <span class="recent-item-time">{{ item.createdAt || '' }}</span>
+                  <span class="recent-item-time">{{ item.uploadedAt || '' }}</span>
                 </div>
               </div>
               <div v-if="!recentResumes.length" class="empty-state">
@@ -370,10 +370,9 @@ const initParseRateChart = (data) => {
   if (!parseRateChartRef.value) return
   parseRateChart = echarts.init(parseRateChartRef.value)
   
-  const total = data?.total || 0
-  const success = data?.success || 0
-  const fail = data?.fail || 0
-  const processing = data?.processing || 0
+  const success = data?.successCount || 0
+  const fail = data?.failCount || 0
+  const processing = data?.processingCount || 0
   
   parseRateChart.setOption({
     backgroundColor: 'transparent',
