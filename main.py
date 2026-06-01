@@ -2,6 +2,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from api.auth import router as auth_router
 from api.user import router as user_router
+from api.job import router as job_router
+from api.department import router as department_router
+from api.resume import router as resume_router
+from api.matching import router as matching_router
+from api.statistics import router as statistics_router
+from api.category import router as category_router
+from api.ai import router as ai_router
 from core.config import settings
 from db.database import engine, Base
 
@@ -29,8 +36,24 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+#登录模块
 app.include_router(auth_router)
+#用户模块
 app.include_router(user_router)
+#岗位模块
+app.include_router(job_router)
+#部门模块
+app.include_router(department_router)
+#简历模块
+app.include_router(resume_router)
+#人岗匹配模块
+app.include_router(matching_router)
+#数据统计模块
+app.include_router(statistics_router)
+#岗位类别模块
+app.include_router(category_router)
+#AI智能模块
+app.include_router(ai_router)
 
 
 if __name__ == "__main__":
