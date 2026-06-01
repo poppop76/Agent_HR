@@ -26,7 +26,35 @@ CREATE TABLE `sys_user` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户表';
 
 -- ============================================
--- 2. 岗位表（对应接口: 岗位管理4个接口）
+-- 2. 部门表（对应接口: 部门管理4个接口）
+-- ============================================
+CREATE TABLE `department` (
+  `id` BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '部门ID',
+  `name` VARCHAR(100) NOT NULL UNIQUE COMMENT '部门名称',
+  `description` VARCHAR(500) COMMENT '部门描述',
+  `status` TINYINT DEFAULT 1 COMMENT '状态（1=启用，0=禁用）',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  INDEX `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='部门表';
+
+-- ============================================
+-- 3. 岗位类别表（对应接口: 类别管理4个接口）
+-- ============================================
+CREATE TABLE `job_category` (
+  `id` BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '类别ID',
+  `code` VARCHAR(50) NOT NULL UNIQUE COMMENT '类别编码（英文标识）',
+  `name` VARCHAR(100) NOT NULL COMMENT '类别名称',
+  `description` VARCHAR(500) COMMENT '类别描述',
+  `status` TINYINT DEFAULT 1 COMMENT '状态（1=启用，0=禁用）',
+  `sort_order` INT DEFAULT 0 COMMENT '排序',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  INDEX `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='岗位类别表';
+
+-- ============================================
+-- 4. 岗位表（对应接口: 岗位管理4个接口）
 -- ============================================
 CREATE TABLE `job` (
   `id` BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '岗位ID',
@@ -46,18 +74,18 @@ CREATE TABLE `job` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='岗位表';
 
 -- ============================================
--- 3. 岗位类别权重配置表（对应接口: 系统配置2个接口）
+-- 5. 岗位类别权重配置表（对应接口: 系统配置2个接口）
 -- ============================================
 CREATE TABLE `matching_weight` (
   `id` BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '权重配置ID',
-  `job_type` VARCHAR(50) NOT NULL UNIQUE COMMENT '岗位类别',
-  `job_type_desc` VARCHAR(100) COMMENT '类别描述',
+  `category_id` BIGINT NOT NULL COMMENT '关联类别ID',
   `skill_weight` DECIMAL(3,2) NOT NULL COMMENT '技能权重（0-1）',
   `experience_weight` DECIMAL(3,2) NOT NULL COMMENT '经验权重（0-1）',
   `education_weight` DECIMAL(3,2) NOT NULL COMMENT '学历权重（0-1）',
   `project_weight` DECIMAL(3,2) NOT NULL COMMENT '项目权重（0-1）',
   `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  INDEX `idx_job_type` (`job_type`)
+  UNIQUE KEY `uk_category` (`category_id`),
+  INDEX `idx_category` (`category_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='岗位类别权重配置表';
 
 -- ============================================
@@ -175,11 +203,25 @@ CREATE TABLE `ai_report_record` (
 INSERT INTO `sys_user` (`username`, `password`, `name`, `role`, `status`)
 VALUES ('admin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EH', '系统管理员', 'admin', 1);
 
--- 默认岗位类别权重
-INSERT INTO `matching_weight` (`job_type`, `job_type_desc`, `skill_weight`, `experience_weight`, `education_weight`, `project_weight`) VALUES
-('技术研发', '技术研发类岗位', 0.40, 0.30, 0.15, 0.15),
-('产品设计', '产品设计类岗位', 0.30, 0.30, 0.20, 0.20),
-('市场营销', '市场营销类岗位', 0.25, 0.35, 0.20, 0.20),
-('人力资源', '人力资源类岗位', 0.20, 0.40, 0.25, 0.15),
-('财务管理', '财务管理类岗位', 0.30, 0.30, 0.25, 0.15),
-('行政管理', '行政管理类岗位', 0.20, 0.35, 0.30, 0.15);
+-- 默认岗位类别
+INSERT INTO `job_category` (`code`, `name`, `description`, `sort_order`) VALUES
+('technical', '技术研发', '技术研发类岗位', 1),
+('product', '产品设计', '产品设计类岗位', 2),
+('marketing', '市场营销', '市场营销类岗位', 3),
+('hr', '人力资源', '人力资源类岗位', 4),
+('finance', '财务管理', '财务管理类岗位', 5),
+('admin', '行政管理', '行政管理类岗位', 6);
+
+-- 默认岗位类别权重（关联类别ID）
+INSERT INTO `matching_weight` (`category_id`, `skill_weight`, `experience_weight`, `education_weight`, `project_weight`)
+SELECT id, 0.40, 0.30, 0.15, 0.15 FROM `job_category` WHERE code = 'technical';
+INSERT INTO `matching_weight` (`category_id`, `skill_weight`, `experience_weight`, `education_weight`, `project_weight`)
+SELECT id, 0.30, 0.30, 0.20, 0.20 FROM `job_category` WHERE code = 'product';
+INSERT INTO `matching_weight` (`category_id`, `skill_weight`, `experience_weight`, `education_weight`, `project_weight`)
+SELECT id, 0.25, 0.35, 0.20, 0.20 FROM `job_category` WHERE code = 'marketing';
+INSERT INTO `matching_weight` (`category_id`, `skill_weight`, `experience_weight`, `education_weight`, `project_weight`)
+SELECT id, 0.20, 0.40, 0.25, 0.15 FROM `job_category` WHERE code = 'hr';
+INSERT INTO `matching_weight` (`category_id`, `skill_weight`, `experience_weight`, `education_weight`, `project_weight`)
+SELECT id, 0.30, 0.30, 0.25, 0.15 FROM `job_category` WHERE code = 'finance';
+INSERT INTO `matching_weight` (`category_id`, `skill_weight`, `experience_weight`, `education_weight`, `project_weight`)
+SELECT id, 0.20, 0.35, 0.30, 0.15 FROM `job_category` WHERE code = 'admin';
