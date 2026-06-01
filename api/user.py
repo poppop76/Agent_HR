@@ -28,8 +28,8 @@ def getUserList(db: Session = Depends(get_db)):
             "name": u.name,
             "role": u.role,
             "status": u.status,
-            "created_at": u.created_at.isoformat() if u.created_at else None,
-            "updated_at": u.updated_at.isoformat() if u.updated_at else None
+            "createdAt": u.created_at.strftime("%Y-%m-%d %H:%M:%S") if u.created_at else None,
+            "updatedAt": u.updated_at.strftime("%Y-%m-%d %H:%M:%S") if u.updated_at else None
         })
 
     return Response(
