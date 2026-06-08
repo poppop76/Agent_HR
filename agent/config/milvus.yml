@@ -1,0 +1,10 @@
+# Milvus 配置
+host: localhost
+port: 19530
+collection_name: hr_agent
+dim: 1024
+metric_type: L2
+index_type: IVF_FLAT
+params:
+  nlist: 1024
+top_k: 3
