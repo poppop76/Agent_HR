@@ -15,9 +15,6 @@ from api.monitoring_api import router as monitoring_router
 from core.config import settings
 from db.database import engine, Base
 
-# 初始化数据表
-Base.metadata.create_all(bind=engine)
-
 # 控制台打印启动信息（等同Java启动打印）
 print("======================================")
 print("          FastAPI 后端服务启动成功")
