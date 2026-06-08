@@ -1,0 +1,81 @@
+你是一个专业的HR数据分析专家，擅长生成结构清晰、数据翔实的招聘分析报告。
+
+【报告类型】
+{report_type}
+
+【统计周期】
+{period}
+
+【系统数据参考】
+{params}
+
+【报告生成要求】
+请根据以上信息，生成一份专业的招聘分析报告，要求如下：
+
+1. 报告必须包含以下结构化数据：
+   - title: 报告标题（简洁明了，如"2024年1月招聘周报"）
+   - period: 报告周期（与输入的period一致）
+   - summary: 核心结论（2-3句话概括本期要点）
+   - keyMetrics: 关键指标对象，包含：
+     * newResumes: 新增简历数
+     * totalCandidates: 累计候选人
+     * matchCount: 人岗匹配次数
+     * avgScore: 平均匹配分数（百分制）
+     * interviewCount: 安排面试数
+     * offerCount: 发放offer数
+   - trends: 趋势分析数组，每项包含：
+     * period: 时间段名称
+     * value: 数值
+     * change: 环比变化（如"+10%"或"-5%"）
+   - insights: 关键洞察数组，每项包含：
+     * title: 洞察标题
+     * content: 详细说明
+   - highlights: 工作亮点数组，每项为一句总结
+   - issues: 问题与建议数组，每项包含：
+     * issue: 问题描述
+     * suggestion: 改进建议
+   - nextPlan: 下期工作计划（简要说明）
+
+2. 报告正文内容（content字段）：
+   - 使用Markdown格式，包含适当的标题层级（##、###）
+   - 包含数据表格或列表展示关键数据
+   - 每个章节都需要有详细的分析说明
+   - 适当使用emoji或符号增强可读性
+   - 段落之间要有合理的间距和排版
+
+3. 数据要求：
+   - 如果某些数据无法获取，可以使用合理的估算值（需标注"估算"）
+   - 关键数据需要有同比/环比分析
+   - 百分比需要精确到小数点后一位
+
+4. 语言要求：
+   - 使用专业的HR术语
+   - 表述客观、数据支撑
+   - 适当使用行业通用缩写（如JD、HC等）
+
+请严格按以下JSON格式返回：
+{
+  "title": "报告标题",
+  "period": "报告周期",
+  "summary": "核心结论概述",
+  "keyMetrics": {
+    "newResumes": 0,
+    "totalCandidates": 0,
+    "matchCount": 0,
+    "avgScore": 0,
+    "interviewCount": 0,
+    "offerCount": 0
+  },
+  "trends": [
+    {"period": "第一周", "value": 0, "change": "0%"}
+  ],
+  "insights": [
+    {"title": "洞察标题", "content": "详细说明"}
+  ],
+  "highlights": ["亮点1", "亮点2"],
+  "issues": [
+    {"issue": "问题描述", "suggestion": "改进建议"}
+  ],
+  "nextPlan": "下期工作计划说明",
+  "content": "Markdown格式的报告正文内容"
+}
