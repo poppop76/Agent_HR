@@ -6,3 +6,4 @@ from models.candidate import Candidate
 from models.matching_task import MatchingTask
 from models.matching_result import MatchingResult
 from models.ai_report_record import AiReportRecord
+from agent.memory.memory_manager import ConversationMemory, ConversationSession
