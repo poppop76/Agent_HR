@@ -8,12 +8,21 @@ from models.candidate import Candidate
 import json
 import os
 import uuid
+from datetime import datetime
 
 router = APIRouter(prefix=settings.API_PREFIX)
 
 UPLOAD_DIR = "uploads/resumes"
 ALLOWED_TYPES = {".pdf", ".doc", ".docx", ".txt"}
 MAX_SIZE = 20 * 1024 * 1024  # 20MB
+
+
+def sanitize_filename(name: str) -> str:
+    """清理文件名，移除非法字符"""
+    illegal_chars = r'<>:"/\|?*'
+    for char in illegal_chars:
+        name = name.replace(char, '')
+    return name.strip()
 
 
 @router.post("/resume/upload")
@@ -34,9 +43,11 @@ def upload_resume(file: UploadFile = File(...),
     if size > MAX_SIZE:
         raise HTTPException(status_code=settings.RES_CODE["400"], detail="文件大小超过20MB限制")
 
-    # 保存文件
+    # 保存文件 - 使用姓名+岗位意向+时间的命名规则
     os.makedirs(UPLOAD_DIR, exist_ok=True)
-    unique_name = f"{uuid.uuid4().hex}{ext}"
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    unique_suffix = uuid.uuid4().hex[:6]  # 添加短UUID避免重名
+    unique_name = f"待解析_{timestamp}_{unique_suffix}{ext}"
     file_path = os.path.join(UPLOAD_DIR, unique_name)
 
     with open(file_path, "wb") as f:
@@ -109,6 +120,7 @@ def resume_list(page: int = Query(1, ge=1),
             "email": candidate.email if candidate else "",
             "education": candidate.education if candidate else "",
             "workYears": candidate.work_years if candidate else 0,
+            "targetPosition": candidate.target_position if candidate else "",
             "uploadedAt": r.created_at.strftime("%Y-%m-%d %H:%M:%S") if r.created_at else ""
         })
 
@@ -127,11 +139,93 @@ def resume_list(page: int = Query(1, ge=1),
     )
 
 
+@router.get("/resume/detail/{id}")
+def get_resume_detail(id: int,
+                      db: Session = Depends(get_db)):
+
+    print(f"开始查询简历详情:id={id}")
+
+    resume = db.query(Resume).filter(Resume.id == id).first()
+
+    if not resume:
+        raise HTTPException(status_code=settings.RES_CODE["404"], detail="简历不存在")
+
+    candidate = db.query(Candidate).filter(Candidate.resume_id == id).first()
+
+    result = {
+        "id": resume.id,
+        "fileName": resume.file_name,
+        "fileType": resume.file_type,
+        "filePath": resume.file_path,
+        "fileSize": resume.file_size,
+        "parseStatus": resume.parse_status,
+        "name": candidate.name if candidate else "",
+        "phone": candidate.phone if candidate else "",
+        "email": candidate.email if candidate else "",
+        "education": candidate.education if candidate else "",
+        "uploadedAt": resume.created_at.strftime("%Y-%m-%d %H:%M:%S") if resume.created_at else ""
+    }
+
+    return Response(
+        content=json.dumps({
+            "code": settings.RES_CODE["200"],
+            "msg": "查询成功！",
+            "data": result
+        }, ensure_ascii=False),
+        media_type="application/json"
+    )
+
+
+@router.get("/resume/candidate/{resumeId}")
+def get_candidate_by_resume_id(resumeId: int,
+                               db: Session = Depends(get_db)):
+
+    print(f"开始查询候选人信息:resumeId={resumeId}")
+
+    candidate = db.query(Candidate).filter(Candidate.resume_id == resumeId).first()
+
+    if not candidate:
+        raise HTTPException(status_code=settings.RES_CODE["404"], detail="未找到解析结果")
+
+    result = {
+        "id": candidate.id,
+        "resumeId": candidate.resume_id,
+        "name": candidate.name or "",
+        "phone": candidate.phone or "",
+        "email": candidate.email or "",
+        "gender": candidate.gender or "",
+        "age": candidate.age,
+        "education": candidate.education or "",
+        "candidateType": candidate.candidate_type or "有工作经验",
+        "workYears": candidate.work_years or 0,
+        "targetPosition": candidate.target_position or "",
+        "skills": candidate.skills or [],
+        "skillDescription": candidate.skill_description or "",
+        "professionalSkills": candidate.professional_skills or {},
+        "selfEvaluation": candidate.self_evaluation or "",
+        "workExperience": candidate.work_experience or [],
+        "internshipExperience": candidate.internship_experience or [],
+        "educationHistory": candidate.education_history or [],
+        "projectExperience": candidate.project_experience or [],
+        "status": candidate.status,
+        "createdAt": candidate.created_at.strftime("%Y-%m-%d %H:%M:%S") if candidate.created_at else ""
+    }
+
+    return Response(
+        content=json.dumps({
+            "code": settings.RES_CODE["200"],
+            "msg": "查询成功！",
+            "data": result
+        }, ensure_ascii=False),
+        media_type="application/json"
+    )
+
+
 @router.delete("/resume/delete/{id}")
 def delete_resume(id: int,
                   db: Session = Depends(get_db)):
 
-    print(f"开始删除简历:{id}")
+    print(f"开始删除简历:{id}", flush=True)
 
     resume = db.query(Resume).filter(Resume.id == id).first()
 
