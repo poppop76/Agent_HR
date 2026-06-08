@@ -1,0 +1,7 @@
+# Agent 配置文件
+agent_name: hr_assistant
+max_iterations: 5
+verbose: true
+
+# 向量存储配置 - 全部使用 Milvus
+vector_store_type: milvus
