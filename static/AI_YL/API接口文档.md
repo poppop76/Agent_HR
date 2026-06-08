@@ -205,6 +205,108 @@
 
 ---
 
+### 2. 部门管理模块（Department）
+
+#### 2.1 获取部门列表
+
+**功能**: 获取所有部门列表
+
+**URL**: `/department/list`
+
+**方式**: GET
+
+**传递参数**: 无
+
+**返回参数**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": [
+    {
+      "id": "number",
+      "name": "string, 部门名称",
+      "description": "string, 部门描述",
+      "status": "number, 1=启用, 0=禁用"
+    }
+  ]
+}
+```
+
+#### 2.2 添加部门
+
+**功能**: 新增部门
+
+**URL**: `/department/add`
+
+**方式**: POST
+
+**传递参数**:
+```json
+{
+  "name": "string, 必填, 部门名称",
+  "description": "string, 可选, 部门描述"
+}
+```
+
+**返回参数**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "id": "number"
+  }
+}
+```
+
+#### 2.3 更新部门
+
+**功能**: 修改部门信息
+
+**URL**: `/department/update/{id}`
+
+**方式**: PUT
+
+**传递参数**:
+```json
+{
+  "name": "string, 可选, 部门名称",
+  "description": "string, 可选, 部门描述",
+  "status": "number, 可选, 1=启用, 0=禁用"
+}
+```
+
+**返回参数**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": null
+}
+```
+
+#### 2.4 删除部门
+
+**功能**: 删除部门
+
+**URL**: `/department/delete/{id}`
+
+**方式**: DELETE
+
+**传递参数**: 路径参数 `id`（必填）
+
+**返回参数**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": null
+}
+```
+
+---
+
 ### 3. 岗位管理模块（Job）
 
 #### 3.1 获取岗位列表
@@ -213,7 +315,7 @@
 
 **URL**: `/job/list`
 
-**方式**: GET
+**方式**: POST
 
 **传递参数**:
 ```json
@@ -986,13 +1088,13 @@
 
 ---
 
-### 8. 系统配置模块（System，仅管理员）
+### 8. 岗位类别管理模块（Category，仅管理员）
 
-#### 8.1 获取权重配置列表
+#### 8.1 获取类别列表
 
-**功能**: 获取所有岗位类别的匹配权重配置（仅管理员）
+**功能**: 获取所有岗位类别列表（含权重配置）
 
-**URL**: `/weight/list`
+**URL**: `/category/list`
 
 **方式**: GET
 
@@ -1006,12 +1108,17 @@
   "data": [
     {
       "id": "number",
-      "jobType": "string, 岗位类别",
-      "jobTypeDesc": "string, 类别描述",
-      "skillWeight": "number, 技能权重（0-1）",
-      "experienceWeight": "number, 经验权重（0-1）",
-      "educationWeight": "number, 学历权重（0-1）",
-      "projectWeight": "number, 项目权重（0-1）"
+      "code": "string, 类别编码",
+      "name": "string, 类别名称",
+      "description": "string, 类别描述",
+      "status": "number, 1=启用, 0=禁用",
+      "sortOrder": "number, 排序",
+      "weight": {
+        "skillWeight": "number, 技能权重（0-1）",
+        "experienceWeight": "number, 经验权重（0-1）",
+        "educationWeight": "number, 学历权重（0-1）",
+        "projectWeight": "number, 项目权重（0-1）"
+      }
     }
   ]
 }
@@ -1019,11 +1126,42 @@
 
 ---
 
-#### 8.2 更新权重配置
+#### 8.2 添加类别
 
-**功能**: 更新指定岗位类别的匹配权重（仅管理员）
+**功能**: 新增岗位类别（自动创建默认权重）
 
-**URL**: `/weight/update/{id}`
+**URL**: `/category/add`
+
+**方式**: POST
+
+**传递参数**:
+```json
+{
+  "code": "string, 必填, 类别编码（英文标识）",
+  "name": "string, 必填, 类别名称",
+  "description": "string, 可选, 类别描述",
+  "sortOrder": "number, 可选, 排序，默认0"
+}
+```
+
+**返回参数**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "id": "number, 新增类别ID"
+  }
+}
+```
+
+---
+
+#### 8.3 更新类别
+
+**功能**: 修改类别信息
+
+**URL**: `/category/update/{id}`
 
 **方式**: PUT
 
@@ -1031,11 +1169,61 @@
 
 ```json
 {
-  "jobTypeDesc": "string, 可选, 类别描述",
-  "skillWeight": "number, 必填, 技能权重（0-1）",
-  "experienceWeight": "number, 必填, 经验权重（0-1）",
-  "educationWeight": "number, 必填, 学历权重（0-1）",
-  "projectWeight": "number, 必填, 项目权重（0-1）"
+  "name": "string, 可选, 类别名称",
+  "description": "string, 可选, 类别描述",
+  "status": "number, 可选, 1=启用, 0=禁用",
+  "sortOrder": "number, 可选, 排序"
+}
+```
+
+**返回参数**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": null
+}
+```
+
+---
+
+#### 8.4 删除类别
+
+**功能**: 删除岗位类别（需先删除关联岗位）
+
+**URL**: `/category/delete/{id}`
+
+**方式**: DELETE
+
+**传递参数**: 路径参数 `id`（必填）
+
+**返回参数**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": null
+}
+```
+
+---
+
+#### 8.5 更新类别权重
+
+**功能**: 更新指定类别的匹配权重
+
+**URL**: `/category/weight/{id}`
+
+**方式**: PUT
+
+**传递参数**: 路径参数 `id`（必填）
+
+```json
+{
+  "skillWeight": "number, 可选, 技能权重（0-1）",
+  "experienceWeight": "number, 可选, 经验权重（0-1）",
+  "educationWeight": "number, 可选, 学历权重（0-1）",
+  "projectWeight": "number, 可选, 项目权重（0-1）"
 }
 ```
 
@@ -1056,10 +1244,11 @@
 |------|---------|------|
 | 认证模块 | 1 | 登录 |
 | 用户管理 | 4 | 用户CRUD（仅管理员） |
+| 部门管理 | 4 | 部门CRUD |
 | 岗位管理 | 4 | 岗位CRUD（列表含详情、编辑含上下架） |
+| 岗位类别 | 5 | 类别CRUD+权重配置（仅管理员） |
 | 简历管理 | 3 | 上传（自动解析）、列表、删除 |
 | 人岗匹配 | 3 | 执行匹配、结果列表、报告 |
 | AI智能模块 | 11 | 解析、面试问题、摘要、薪资、对话、报告生成、报告列表、报告详情、报告删除、对比、预测 |
 | 数据统计 | 1 | 概览（含趋势和解析率） |
-| 系统配置 | 2 | 权重配置列表、更新（仅管理员） |
-| **合计** | **29** | |
+| **合计** | **36** | |
