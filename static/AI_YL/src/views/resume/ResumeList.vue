@@ -45,7 +45,7 @@
           v-loading="loading" 
           class="glass-table"
         >
-          <el-table-column prop="fileName" label="文件名" />
+          <el-table-column prop="targetPosition" label="求职岗位" />
           <el-table-column prop="name" label="候选人" />
           <el-table-column prop="phone" label="电话" />
           <el-table-column prop="education" label="学历" />
@@ -82,7 +82,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, onActivated } from 'vue'
 import { useRouter } from 'vue-router'
 import { resumeApi } from '@/api'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -159,6 +159,10 @@ const handleDelete = (row) => {
 }
 
 onMounted(() => {
+  fetchResumes()
+})
+
+onActivated(() => {
   fetchResumes()
 })
 </script>

@@ -6,7 +6,7 @@
       <div class="header-particles"></div>
       <div class="header-content">
         <h1 class="page-title">智能简历解析</h1>
-        <p class="page-subtitle">支持批量上传，AI自动解析简历内容</p>
+        <p class="page-subtitle">支持批量上传，智能解析简历内容</p>
       </div>
       <div class="header-actions">
         <el-button type="primary" size="large" class="action-btn" @click="triggerFolderInput">
@@ -20,7 +20,7 @@
       <div class="upload-card glass-card">
         <div class="card-header">
           <h3 class="card-title">上传简历</h3>
-          <div class="card-badge">AI 解析</div>
+          <div class="card-badge">智能解析</div>
         </div>
         
         <div 
@@ -100,6 +100,18 @@
                 <el-icon><CircleCheckFilled /></el-icon>
                 上传成功
               </span>
+              <span v-else-if="file.status === 'parsing'" class="status-parsing">
+                <el-icon class="rotating"><Loading /></el-icon>
+                简历解析中...
+              </span>
+              <span v-else-if="file.status === 'parse-success'" class="status-success">
+                <el-icon><CircleCheckFilled /></el-icon>
+                解析成功
+              </span>
+              <span v-else-if="file.status === 'parse-error'" class="status-error">
+                <el-icon><CircleCloseFilled /></el-icon>
+                解析失败
+              </span>
               <span v-else-if="file.status === 'error'" class="status-error">
                 <el-icon><CircleCloseFilled /></el-icon>
                 上传失败
@@ -111,13 +123,28 @@
         </div>
       </div>
     </div>
+    
+    <transition name="fade">
+      <div v-if="isParsing" class="parsing-overlay">
+        <div class="parsing-backdrop"></div>
+        <div class="parsing-content">
+          <div class="parsing-spinner">
+            <div class="spinner-ring"></div>
+            <div class="spinner-ring"></div>
+            <div class="spinner-ring"></div>
+          </div>
+          <p class="parsing-text">简历解析中...</p>
+          <p class="parsing-hint">请耐心等待，这可能需要几秒钟</p>
+        </div>
+      </div>
+    </transition>
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { resumeApi } from '@/api'
+import { resumeApi, aiApi } from '@/api'
 import { ElMessage } from 'element-plus'
 import { 
   UploadFilled, Upload, FolderOpened, 
@@ -130,6 +157,7 @@ const fileInputRef = ref(null)
 const folderInputRef = ref(null)
 const isDragover = ref(false)
 const uploadList = ref([])
+const isParsing = ref(false)
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024
 const ALLOWED_TYPES = [
@@ -183,7 +211,8 @@ const uploadFile = async (file) => {
     name: file.name,
     size: file.size,
     progress: 0,
-    status: 'uploading'
+    status: 'uploading',
+    resumeId: null
   }
   uploadList.value.push(uploadItem)
   
@@ -191,16 +220,40 @@ const uploadFile = async (file) => {
   formData.append('file', file)
   
   try {
-    await resumeApi.uploadResume(formData, {
+    const uploadRes = await resumeApi.uploadResume(formData, {
       onUploadProgress: (e) => {
         uploadItem.progress = Math.round((e.loaded * 100) / e.total)
       }
     })
+    
     uploadItem.status = 'success'
     uploadItem.progress = 100
-    ElMessage.success(`${file.name} 上传成功`)
+    uploadItem.resumeId = uploadRes.data.id
+    ElMessage.success(`${file.name} 上传成功！`)
+    
+    uploadItem.status = 'parsing'
+    uploadItem.progress = 50
+    isParsing.value = true
+    ElMessage.info(`${file.name} 简历解析中...`)
+    
+    try {
+        const parseRes = await aiApi.parseResume({ resumeId: uploadItem.resumeId })
+        uploadItem.status = 'parse-success'
+        uploadItem.progress = 100
+        isParsing.value = false
+        ElMessage.success(`${file.name} 解析成功！`)
+        
+        setTimeout(() => {
+          router.push(`/resumes/preview/${uploadItem.resumeId}`)
+        }, 1000)
+      } catch (parseError) {
+        uploadItem.status = 'parse-error'
+        isParsing.value = false
+        ElMessage.error(`${file.name} 解析失败`)
+      }
   } catch (error) {
     uploadItem.status = 'error'
+    isParsing.value = false
     ElMessage.error(`${file.name} 上传失败`)
   }
 }
@@ -712,5 +765,98 @@ const getFileIconClass = (fileName) => {
 
 .status-success {
   animation: successPulse 0.5s ease;
+}
+
+.parsing-overlay {
+  position: fixed;
+  top: 0;
+  left: 240px;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.parsing-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+}
+
+.parsing-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.parsing-spinner {
+  position: relative;
+  width: 80px;
+  height: 80px;
+}
+
+.spinner-ring {
+  position: absolute;
+  inset: 0;
+  border: 3px solid transparent;
+  border-radius: 50%;
+  
+  &:nth-child(1) {
+    border-top-color: var(--primary-color);
+    animation: spin 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+  }
+  
+  &:nth-child(2) {
+    inset: 8px;
+    border-right-color: var(--secondary-color);
+    animation: spin 1.6s cubic-bezier(0.5, 0, 0.5, 1) infinite reverse;
+  }
+  
+  &:nth-child(3) {
+    inset: 16px;
+    border-bottom-color: var(--accent-color);
+    animation: spin 2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+  }
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.parsing-text {
+  font-size: 18px;
+  font-weight: 600;
+  color: #fff;
+  margin: 0;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.parsing-hint {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+@media (max-width: 768px) {
+  .parsing-overlay {
+    left: 0;
+  }
 }
 </style>

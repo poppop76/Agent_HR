@@ -26,7 +26,7 @@
       <div class="matching-card glass-card">
         <el-form :model="matchingForm" label-width="120px" class="matching-form">
           <el-form-item label="目标岗位">
-            <el-select v-model="matchingForm.jobId" placeholder="请选择目标岗位" class="custom-select">
+            <el-select v-model="matchingForm.jobId" placeholder="请选择目标岗位" class="custom-select" @change="handleJobChange">
               <el-option v-for="job in jobs" :key="job.id" :label="job.name" :value="job.id" />
             </el-select>
           </el-form-item>
@@ -187,17 +187,19 @@ const handleMatching = async () => {
       jobId: matchingForm.jobId,
       resumeIds: matchingForm.resumeIds
     })
-    ElMessage.success('匹配任务已创建')
+    ElMessage.success(res.data.msg || '匹配任务已创建')
     // 获取匹配结果
     await fetchMatchingResults(matchingForm.jobId)
   } catch (error) {
-    ElMessage.error('匹配失败')
+    ElMessage.error(error.response?.data?.msg || '匹配失败')
   } finally {
     loading.value = false
   }
 }
 
 const fetchMatchingResults = async (jobId) => {
+  if (!jobId) return
+  
   try {
     const res = await matchingApi.getMatchingResultList({
       jobId,
@@ -210,6 +212,15 @@ const fetchMatchingResults = async (jobId) => {
   }
 }
 
+const handleJobChange = async () => {
+  // 当选择岗位时，自动加载该岗位的历史匹配记录
+  if (matchingForm.jobId) {
+    await fetchMatchingResults(matchingForm.jobId)
+  } else {
+    matchingResults.value = []
+  }
+}
+
 onMounted(() => {
   fetchJobs()
   fetchCandidates()
@@ -219,6 +230,11 @@ onMounted(() => {
   }
   if (route.query.resumeId) {
     matchingForm.resumeIds = [route.query.resumeId]
+  }
+  
+  // 页面加载时，如果有选中的岗位，自动获取历史匹配记录
+  if (matchingForm.jobId) {
+    fetchMatchingResults(matchingForm.jobId)
   }
 })
 </script>

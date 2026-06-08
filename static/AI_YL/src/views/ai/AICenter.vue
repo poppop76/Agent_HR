@@ -27,7 +27,7 @@
 </template>
 
 <script setup>
-import { ChatDotRound, ChatLineRound, Notebook, Document, Money, TrendCharts, Sort, ArrowRight } from '@element-plus/icons-vue'
+import { ChatDotRound, ChatLineRound, Notebook, Document, Money, TrendCharts, Sort, ArrowRight, DataLine } from '@element-plus/icons-vue'
 
 const features = [
   {
@@ -71,6 +71,13 @@ const features = [
     icon: TrendCharts,
     path: '/ai-center/predict',
     gradient: 'linear-gradient(135deg, #8B5CF6, #7C3AED)'
+  },
+  {
+    title: '系统监控',
+    desc: '实时监控AI系统性能和质量指标',
+    icon: DataLine,
+    path: '/ai-center/metrics',
+    gradient: 'linear-gradient(135deg, #EF4444, #DC2626)'
   }
 ]
 </script>

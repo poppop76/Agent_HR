@@ -1,4 +1,4 @@
-import api from '@/utils/request'
+import api, { aiAxios } from '@/utils/request'
 
 /**
  * 认证相关接口
@@ -99,9 +99,17 @@ export const resumeApi = {
   getResumeList(params) {
     return api.get('/resume/list', { params })
   },
+  // 获取候选人详情
+  getCandidateByResumeId(resumeId) {
+    return api.get(`/resume/candidate/${resumeId}`)
+  },
   // 删除简历
   deleteResume(id) {
     return api.delete(`/resume/delete/${id}`)
+  },
+  // 获取简历详情
+  getResumeDetail(id) {
+    return api.get(`/resume/detail/${id}`)
   }
 }
 
@@ -126,52 +134,55 @@ export const matchingApi = {
 /**
  * AI 智能模块接口（Agent 核心能力）
  */
-export const aiApi = {
+export const aiApiClient = {
   // 简历智能解析（核心）
   parseResume(data) {
-    return api.post('/ai/parse-resume', data)
+    return aiAxios.post('/ai/parse-resume', data)
   },
   // 生成面试问题
   generateInterviewQuestions(data) {
-    return api.post('/ai/interview-questions', data)
+    return aiAxios.post('/ai/interview-questions', data)
   },
   // 简历智能摘要
   generateResumeSummary(data) {
-    return api.post('/ai/resume-summary', data)
+    return aiAxios.post('/ai/resume-summary', data)
   },
   // 薪资建议
   getSalarySuggestion(data) {
-    return api.post('/ai/salary-suggestion', data)
+    return aiAxios.post('/ai/salary-suggestion', data)
   },
   // 对话式查询
   chatQuery(data) {
-    return api.post('/ai/chat-query', data)
+    return aiAxios.post('/ai/chat-query', data)
   },
   // 智能报告生成
   generateReport(data) {
-    return api.post('/ai/report-generate', data)
+    return aiAxios.post('/ai/report-generate', data)
   },
   // 获取报告列表
   getReportList(params) {
-    return api.get('/ai/report-list', { params })
+    return aiAxios.get('/ai/report-list', { params })
   },
   // 获取报告详情
   getReportDetail(id) {
-    return api.get(`/ai/report-detail/${id}`)
+    return aiAxios.get(`/ai/report-detail/${id}`)
   },
   // 删除报告
   deleteReport(id) {
-    return api.delete(`/ai/report-delete/${id}`)
+    return aiAxios.delete(`/ai/report-delete/${id}`)
   },
   // 简历智能对比
   compareCandidates(data) {
-    return api.post('/ai/candidate-compare', data)
+    return aiAxios.post('/ai/candidate-compare', data)
   },
   // 人才预测
   predictTalent(data) {
-    return api.post('/ai/talent-predict', data)
+    return aiAxios.post('/ai/talent-predict', data)
   }
 }
+
+// 保持向后兼容
+export const aiApi = aiApiClient
 
 /**
  * 数据统计接口（简化版）

@@ -38,34 +38,77 @@
         <el-col :xs="24" :md="16">
           <div class="result-card glass-card" v-if="result">
             <div class="summary-text">{{ result.summary }}</div>
-            <el-row :gutter="16" style="margin-top: 20px">
-              <el-col :span="12">
-                <div class="info-section">
-                  <h4>核心优势</h4>
-                  <el-tag v-for="(s, idx) in result.coreStrengths" :key="idx" type="success" class="info-tag">{{ s }}</el-tag>
-                </div>
-              </el-col>
-              <el-col :span="12">
-                <div class="info-section">
-                  <h4>关键技能</h4>
-                  <el-tag v-for="(s, idx) in result.keySkills" :key="idx" type="primary" class="info-tag">{{ s }}</el-tag>
-                </div>
-              </el-col>
-            </el-row>
+            
+            <div class="section-divider">
+              <span class="divider-text">核心信息</span>
+            </div>
+            
             <el-row :gutter="16" style="margin-top: 16px">
               <el-col :span="12">
                 <div class="info-section">
-                  <h4>经验亮点</h4>
-                  <el-tag v-for="(s, idx) in result.experienceHighlights" :key="idx" type="warning" class="info-tag">{{ s }}</el-tag>
+                  <div class="section-header">
+                    <el-icon class="section-icon"><Trophy /></el-icon>
+                    <h4>核心优势</h4>
+                  </div>
+                  <div class="tags-container">
+                    <el-tag v-for="(s, idx) in result.coreStrengths" :key="idx" type="success" class="info-tag">{{ s }}</el-tag>
+                  </div>
                 </div>
               </el-col>
               <el-col :span="12">
                 <div class="info-section">
-                  <h4>潜在风险</h4>
-                  <el-tag v-for="(s, idx) in result.potentialRisks" :key="idx" type="danger" class="info-tag">{{ s }}</el-tag>
+                  <div class="section-header">
+                    <el-icon class="section-icon"><Tools /></el-icon>
+                    <h4>关键技能</h4>
+                  </div>
+                  <div class="tags-container">
+                    <el-tag v-for="(s, idx) in result.keySkills" :key="idx" type="primary" class="info-tag">{{ s }}</el-tag>
+                  </div>
                 </div>
               </el-col>
             </el-row>
+            
+            <el-row :gutter="16" style="margin-top: 16px">
+              <el-col :span="12">
+                <div class="info-section">
+                  <div class="section-header">
+                    <el-icon class="section-icon"><Star /></el-icon>
+                    <h4>经验亮点</h4>
+                  </div>
+                  <div class="tags-container">
+                    <el-tag v-for="(s, idx) in result.experienceHighlights" :key="idx" type="warning" class="info-tag">{{ s }}</el-tag>
+                  </div>
+                </div>
+              </el-col>
+              <el-col :span="12">
+                <div class="info-section">
+                  <div class="section-header">
+                    <el-icon class="section-icon"><Warning /></el-icon>
+                    <h4>潜在风险</h4>
+                  </div>
+                  <div class="tags-container">
+                    <el-tag v-for="(s, idx) in result.potentialRisks" :key="idx" type="danger" class="info-tag">{{ s }}</el-tag>
+                  </div>
+                </div>
+              </el-col>
+            </el-row>
+            
+            <div class="section-divider" v-if="result.suitablePositions && result.suitablePositions.length > 0">
+              <span class="divider-text">岗位推荐</span>
+            </div>
+            
+            <div class="suitable-section" v-if="result.suitablePositions && result.suitablePositions.length > 0">
+              <div class="section-header">
+                <el-icon class="section-icon"><Briefcase /></el-icon>
+                <h4>适合岗位</h4>
+              </div>
+              <div class="positions-container">
+                <div v-for="(pos, idx) in result.suitablePositions" :key="idx" class="position-card">
+                  <el-icon class="position-icon"><Location /></el-icon>
+                  <span>{{ pos }}</span>
+                </div>
+              </div>
+            </div>
           </div>
           <div class="empty-card glass-card" v-else>
             <el-empty description="选择候选人后点击生成" />
@@ -80,7 +123,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { aiApi, resumeApi } from '@/api'
 import { ElMessage } from 'element-plus'
-import { ArrowLeft, MagicStick } from '@element-plus/icons-vue'
+import { ArrowLeft, MagicStick, Trophy, Tools, Star, Warning, Briefcase, Location } from '@element-plus/icons-vue'
 
 const candidates = ref([])
 const loading = ref(false)
@@ -186,20 +229,117 @@ onMounted(() => {
     font-size: 15px;
     line-height: 1.8;
     color: var(--text-primary);
-    padding: 16px;
+    padding: 20px;
     background: var(--primary-glow);
     border-radius: var(--radius-md);
+    border-left: 4px solid var(--primary-color);
+  }
+
+  .section-divider {
+    display: flex;
+    align-items: center;
+    margin: 24px 0 8px;
+    
+    &::before, &::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border-color);
+    }
+    
+    .divider-text {
+      padding: 0 16px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
   }
 
   .info-section {
-    h4 {
-      margin: 0 0 12px;
-      color: var(--text-primary);
-      font-size: 14px;
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      
+      .section-icon {
+        font-size: 18px;
+        color: var(--primary-color);
+      }
+      
+      h4 {
+        margin: 0;
+        color: var(--text-primary);
+        font-size: 14px;
+        font-weight: 600;
+      }
+    }
+
+    .tags-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
     }
 
     .info-tag {
-      margin: 4px;
+      margin: 0;
+      padding: 6px 12px;
+      font-size: 13px;
+      border-radius: var(--radius-md);
+    }
+  }
+
+  .suitable-section {
+    margin-top: 16px;
+    
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+      
+      .section-icon {
+        font-size: 18px;
+        color: var(--primary-color);
+      }
+      
+      h4 {
+        margin: 0;
+        color: var(--text-primary);
+        font-size: 14px;
+        font-weight: 600;
+      }
+    }
+
+    .positions-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .position-card {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 16px;
+      background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+      border: 1px solid rgba(102, 126, 234, 0.2);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.3s;
+      
+      &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+        border-color: rgba(102, 126, 234, 0.4);
+      }
+      
+      .position-icon {
+        font-size: 16px;
+        color: var(--primary-color);
+      }
     }
   }
 }

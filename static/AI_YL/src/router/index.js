@@ -57,6 +57,18 @@ const routes = [
         meta: { title: '简历管理', icon: 'Document' }
       },
       {
+        path: 'resumes/preview/:id',
+        name: 'ResumePreview',
+        component: () => import('@/views/resume/ResumePreview.vue'),
+        meta: { title: '简历预览', icon: 'View' }
+      },
+      {
+        path: 'resumes/result/:id',
+        name: 'ResumeResult',
+        component: () => import('@/views/resume/ResumeResult.vue'),
+        meta: { title: '解析结果', icon: 'DocumentChecked' }
+      },
+      {
         path: 'matching',
         name: 'Matching',
         component: () => import('@/views/matching/Matching.vue'),
@@ -109,6 +121,12 @@ const routes = [
         name: 'AIPredict',
         component: () => import('@/views/ai/AIPredict.vue'),
         meta: { title: '人才预测', icon: 'TrendCharts' }
+      },
+      {
+        path: 'ai-center/metrics',
+        name: 'MetricsDashboard',
+        component: () => import('@/views/ai/MetricsDashboard.vue'),
+        meta: { title: '系统监控', icon: 'DataLine' }
       },
       {
         path: 'system/category-manage',
