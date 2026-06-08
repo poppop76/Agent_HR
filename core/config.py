@@ -20,6 +20,15 @@ class Settings(BaseSettings):
     REDIS_PASSWORD: str = os.getenv("REDIS_PASSWORD", None)
     REDIS_DB: int = int(os.getenv("REDIS_DB", 0))
 
+    # ========== Milvus 配置（Docker单机版） ==========
+    MILVUS_HOST: str = os.getenv("MILVUS_HOST", "127.0.0.1")
+    MILVUS_PORT: int = int(os.getenv("MILVUS_PORT", 19530))
+    MILVUS_COLLECTION: str = os.getenv("MILVUS_COLLECTION", "conversation_vectors")
+
+    @property
+    def MILVUS_URI(self):
+        return f"http://{self.MILVUS_HOST}:{self.MILVUS_PORT}"
+
     # ========== 项目配置 ==========
     APP_TITLE: str = os.getenv("APP_TITLE", "HR人岗匹配系统")
     API_PREFIX: str = os.getenv("API_PREFIX", "/hr/api/v1")
