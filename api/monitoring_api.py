@@ -10,8 +10,8 @@ from datetime import datetime, timedelta
 import json
 
 from core.config import settings
-from db.database import get_db
-from agent.monitoring.metrics_collector import get_metrics_collector
+from db.database import get_db, SessionLocal
+from agent.monitoring.metrics_collector import get_metrics_collector, MetricsCollector
 
 router = APIRouter(prefix=settings.API_PREFIX)
 
@@ -61,7 +61,7 @@ def get_metrics_summary(
         if not start_date:
             start_date = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
         
-        collector = get_metrics_collector(lambda: db)
+        collector = MetricsCollector(SessionLocal)
         summary = collector.get_metrics_summary(start_date, end_date, session_id)
         
         return {
@@ -71,9 +71,17 @@ def get_metrics_summary(
         }
     except Exception as e:
         import traceback
-        print(f"[监控] 获取指标汇总失败: {e}")
+        error_detail = str(e)
+        print(f"[监控] 获取指标汇总失败: {error_detail}")
         print(traceback.format_exc())
-        raise HTTPException(status_code=500, detail=f"获取指标汇总失败: {str(e)}")
+        
+        # 检查是否是表不存在的错误
+        if "doesn't exist" in error_detail or "Table" in error_detail:
+            raise HTTPException(
+                status_code=500, 
+                detail="监控表未初始化，请先执行 database/init.sql 脚本创建监控表"
+            )
+        raise HTTPException(status_code=500, detail=f"获取指标汇总失败: {error_detail}")
 
 
 @router.get("/monitoring/trend")
@@ -90,7 +98,7 @@ def get_metrics_trend(
         metric_type: 指标类型 (recall/hallucination/accuracy/token_hit_rate/all)
     """
     try:
-        collector = get_metrics_collector(lambda: db)
+        collector = MetricsCollector(SessionLocal)
         trends = collector.get_metrics_trend(days, metric_type)
         
         return {
@@ -115,7 +123,7 @@ def submit_user_feedback(req: UserFeedbackRequest, db: Session = Depends(get_db)
         if req.rating < 1 or req.rating > 5:
             raise HTTPException(status_code=400, detail="评分必须在1-5之间")
         
-        collector = get_metrics_collector(lambda: db)
+        collector = MetricsCollector(SessionLocal)
         collector.collect_user_feedback(
             conversation_id=req.conversation_id,
             session_id=req.session_id,
@@ -200,9 +208,16 @@ def get_token_usage(
         }
     except Exception as e:
         import traceback
-        print(f"[监控] 获取Token使用统计失败: {e}")
+        error_detail = str(e)
+        print(f"[监控] 获取Token使用统计失败: {error_detail}")
         print(traceback.format_exc())
-        raise HTTPException(status_code=500, detail=f"获取Token使用统计失败: {str(e)}")
+        
+        if "doesn't exist" in error_detail or "Table" in error_detail:
+            raise HTTPException(
+                status_code=500, 
+                detail="监控表未初始化，请先执行 database/init.sql 脚本创建监控表"
+            )
+        raise HTTPException(status_code=500, detail=f"获取Token使用统计失败: {error_detail}")
 
 
 @router.get("/monitoring/conversation-details")
