@@ -143,40 +143,52 @@ class MilvusMemory:
         except Exception as e:
             logger.error(f"[MilvusMemory] 创建集合失败: {e}")
     
-    def _get_embedding(self, text: str) -> List[float]:
-        """获取文本的向量嵌入"""
+    def _init_embeddings(self):
+        """初始化嵌入模型（仅执行一次）"""
+        import os
+        os.environ.setdefault('HF_ENDPOINT', 'https://hf-mirror.com')
+        os.environ.setdefault('HF_HUB_DISABLE_SYMLINKS_WARNING', '1')
+        
+        if hasattr(self, '_embeddings') and self._embeddings is not None:
+            return  # 已初始化
+        
         try:
-            # 提前设置环境变量（在导入 HuggingFace 库之前）
-            import os
-            os.environ.setdefault('HF_ENDPOINT', 'https://hf-mirror.com')
-            os.environ.setdefault('HF_HUB_DISABLE_SYMLINKS_WARNING', '1')
-            
-            # 延迟导入，确保环境变量已设置
             from huggingface_hub import snapshot_download
             
-            # 先尝试下载模型到本地缓存
             try:
                 model_path = snapshot_download(
                     repo_id="sentence-transformers/all-MiniLM-L6-v2",
-                    local_dir=None,  # 使用默认缓存目录
+                    local_dir=None,
                     resume_download=True
                 )
             except Exception as e:
                 logger.warning(f"[MilvusMemory] 模型下载失败，使用默认路径: {e}")
                 model_path = "sentence-transformers/all-MiniLM-L6-v2"
             
-            # 尝试新版 langchain
             try:
                 from langchain_community.embeddings import HuggingFaceEmbeddings
             except ImportError:
-                # 兼容旧版 langchain
                 from langchain.embeddings import HuggingFaceEmbeddings
             
-            embeddings = HuggingFaceEmbeddings(
+            self._embeddings = HuggingFaceEmbeddings(
                 model_name=model_path,
                 model_kwargs={"device": "cpu"}
             )
-            return embeddings.embed_query(text)
+            logger.info("[MilvusMemory] 嵌入模型初始化成功")
+        except Exception as e:
+            logger.error(f"[MilvusMemory] 嵌入模型初始化失败: {e}")
+            self._embeddings = None
+    
+    def _get_embedding(self, text: str) -> List[float]:
+        """获取文本的向量嵌入"""
+        try:
+            self._init_embeddings()
+            
+            if self._embeddings is None:
+                logger.error("[MilvusMemory] 嵌入模型未初始化")
+                return []
+            
+            return self._embeddings.embed_query(text)
         except Exception as e:
             logger.error(f"[MilvusMemory] 获取嵌入失败: {e}")
             return []
@@ -675,6 +687,25 @@ class LongTermMemory:
             db.rollback()
         finally:
             db.close()
+    
+    def delete_session(self, session_id: str):
+        """
+        删除会话及其所有对话记录
+        :param session_id: 会话 ID
+        """
+        db = self._get_db_session()
+        try:
+            # 删除会话关联的对话记录
+            db.query(ConversationMemory).filter_by(session_id=session_id).delete()
+            # 删除会话记录
+            db.query(ConversationSession).filter_by(session_id=session_id).delete()
+            db.commit()
+            logger.info(f"[LongTermMemory] 删除会话：{session_id}")
+        except Exception as e:
+            logger.error(f"[LongTermMemory] 删除会话失败：{str(e)}")
+            db.rollback()
+        finally:
+            db.close()
 
 
 # ========== 关键词提取 ==========
@@ -818,14 +849,21 @@ class MemoryManager:
         self.keyword_extractor = KeywordExtractor()
         self.context_compressor = ContextCompressor(max_length=4000)
         
-        # 初始化Query改写器
-        try:
-            from agent.query_rewriter import get_query_rewriter
-            self.query_rewriter = get_query_rewriter()
-            logger.info("[MemoryManager] Query改写器初始化成功")
-        except Exception as e:
-            logger.warning(f"[MemoryManager] Query改写器初始化失败: {e}")
-            self.query_rewriter = None
+        # Query改写器延迟初始化（避免langchain导入导致启动崩溃）
+        self._query_rewriter = None
+    
+    @property
+    def query_rewriter(self):
+        """延迟加载Query改写器"""
+        if self._query_rewriter is None:
+            try:
+                from agent.query_rewriter import get_query_rewriter
+                self._query_rewriter = get_query_rewriter()
+                logger.info("[MemoryManager] Query改写器延迟初始化成功")
+            except Exception as e:
+                logger.warning(f"[MemoryManager] Query改写器初始化失败: {e}")
+                self._query_rewriter = False  # 标记为已尝试但失败
+        return self._query_rewriter if self._query_rewriter else None
     
     def rewrite_query(self, original_query: str, session_context: Optional[dict] = None) -> str:
         """
@@ -995,3 +1033,12 @@ class MemoryManager:
         :return: 历史对话列表
         """
         return self.long_term.get_session_history(session_id, limit=50)
+    
+    def delete_session(self, session_id: str):
+        """
+        删除会话
+        :param session_id: 会话 ID
+        """
+        self.short_term.clear_session(session_id)
+        self.long_term.delete_session(session_id)
+        logger.info(f"[MemoryManager] 删除会话：{session_id}")
