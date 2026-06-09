@@ -1,4 +1,4 @@
 # 提示词配置文件
-main_prompt_path: "data/prompt/主提示词.txt"
-rag_summarize_prompt_path: "data/prompt/rag_summarize_prompt.txt"
-report_prompt_path: "data/prompt/报告生成提示词.txt"
+main_prompt_path: "agent/data/prompt/主提示词.txt"
+rag_summarize_prompt_path: "agent/data/prompt/rag_summarize_prompt.txt"
+report_prompt_path: "agent/data/prompt/报告生成提示词.txt"
