@@ -1,6 +1,23 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
+// 检查JWT是否过期
+function isTokenExpired(token) {
+  if (!token) return true
+  try {
+    const parts = token.split('.')
+    if (parts.length !== 3) return true
+    const payload = JSON.parse(atob(parts[1]))
+    if (payload.exp) {
+      const now = Math.floor(Date.now() / 1000)
+      return payload.exp < now
+    }
+    return false
+  } catch (e) {
+    return true
+  }
+}
+
 const routes = [
   {
     path: '/login',
@@ -173,6 +190,15 @@ router.beforeEach((to, from, next) => {
   
   const authStore = useAuthStore()
   const hasToken = authStore.token || localStorage.getItem('token')
+  
+  // 检查token是否过期
+  if (to.meta.requiresAuth !== false && hasToken) {
+    if (isTokenExpired(hasToken)) {
+      authStore.logout()
+      next({ name: 'Login', query: { redirect: to.fullPath } })
+      return
+    }
+  }
   
   if (to.meta.requiresAuth !== false && !hasToken) {
     next({ name: 'Login', query: { redirect: to.fullPath } })

@@ -31,7 +31,27 @@
               <el-icon :size="18" v-else><User /></el-icon>
             </div>
             <div class="message-content">
-              <div class="message-text" v-html="parseMarkdown(msg.content)"></div>
+              <div class="message-text" v-html="renderMessage(msg.content)"></div>
+              <div v-if="msg.navData" class="nav-buttons">
+                <div v-if="msg.navData.jobs && msg.navData.jobs.length" class="nav-section">
+                  <div class="nav-section-title">相关岗位</div>
+                  <div class="nav-card" v-for="job in msg.navData.jobs" :key="'job-'+job.id" 
+                       @click="goToJobDetail(job.id)">
+                    <span class="nav-card-name">{{ job.name }}</span>
+                    <span class="nav-card-info">{{ job.type }} · {{ job.salary }}</span>
+                    <span class="nav-card-arrow">→</span>
+                  </div>
+                </div>
+                <div v-if="msg.navData.candidates && msg.navData.candidates.length" class="nav-section">
+                  <div class="nav-section-title">相关候选人</div>
+                  <div class="nav-card candidate-card" v-for="c in msg.navData.candidates" :key="'c-'+c.id" 
+                       @click="goToResumePreview(c.id)">
+                    <span class="nav-card-name">{{ c.name }}</span>
+                    <span class="nav-card-info">{{ c.age }}岁 · {{ c.experience }}</span>
+                    <span class="nav-card-arrow">→</span>
+                  </div>
+                </div>
+              </div>
               <div v-if="msg.keywords && msg.keywords.length > 0" class="message-keywords">
                 <el-tag v-for="(kw, i) in msg.keywords" :key="i" size="small" class="keyword-tag">{{ kw }}</el-tag>
               </div>
@@ -73,7 +93,32 @@
             {{ formatDate(row.updated_at) }}
           </template>
         </el-table-column>
+        <el-table-column label="操作" width="80">
+          <template #default="{ row }">
+            <el-button type="danger" text size="small" @click.stop="deleteSession(row)">删除</el-button>
+          </template>
+        </el-table-column>
       </el-table>
+    </el-dialog>
+
+    <!-- 评价弹窗 -->
+    <el-dialog v-model="showRating" title="评价本次AI回答" width="420px" class="rating-dialog" :close-on-click-modal="false">
+      <div class="rating-content">
+        <div class="rating-stars">
+          <el-rate v-model="ratingValue" :texts="['很差', '较差', '一般', '较好', '很好']" show-text text-color="#ff9900" />
+        </div>
+        <el-input
+          v-model="ratingText"
+          type="textarea"
+          :rows="3"
+          placeholder="请输入您的评价（选填）"
+          class="rating-textarea"
+        />
+      </div>
+      <template #footer>
+        <el-button @click="showRating = false">跳过</el-button>
+        <el-button type="primary" @click="submitRating">提交评价</el-button>
+      </template>
     </el-dialog>
   </div>
 </template>
@@ -99,6 +144,12 @@ const messagesRef = ref(null)
 const sessionId = ref(null)
 const showSessionList = ref(false)
 const sessionList = ref([])
+
+// 评价相关
+const showRating = ref(false)
+const ratingValue = ref(0)
+const ratingText = ref('')
+const currentConversationId = ref('')
 
 // Markdown解析
 const parseMarkdown = (content) => {
@@ -138,6 +189,63 @@ const parseMarkdown = (content) => {
   } catch (e) {
     console.error('Markdown解析失败:', e)
     return content
+  }
+}
+
+// 渲染消息内容（解析Markdown + 跳转标签）
+const renderMessage = (content) => {
+  if (!content) return ''
+  
+  // 提取跳转标签：[信息1 | 信息2 | 信息3 | resume_id=数字ID]
+  const tagRegex = /\[([^\]]+)\|\s*resume_id\s*=\s*(\d+)\]/g
+  let html = content
+  let tagIndex = 0
+  const tags = []
+  
+  // 先提取所有标签，使用HTML注释作为占位符（不会被Markdown解析）
+  html = html.replace(tagRegex, (match, info, id) => {
+    const tagId = `<!--TAG_${tagIndex}-->`
+    tags.push({ id: parseInt(id), info: info.trim(), placeholder: tagId })
+    tagIndex++
+    return tagId
+  })
+  
+  // 解析Markdown
+  html = parseMarkdown(html)
+  
+  // 替换标签占位符为可点击的卡片
+  tags.forEach(tag => {
+    const infoParts = tag.info.split('|').map(s => s.trim())
+    const isJob = infoParts.some(p => /岗|薪资|薪|K/.test(p))
+    const cardClass = isJob ? 'nav-tag job-tag' : 'nav-tag resume-tag'
+    
+    const tagHtml = `<div class="${cardClass}" data-resume-id="${tag.id}" onclick="handleTagClick(this)">
+      <span class="tag-info">${infoParts.map(p => `<span class="tag-part">${p}</span>`).join('<span class="tag-sep">|</span>')}</span>
+      <span class="tag-arrow">→</span>
+    </div>`
+    
+    html = html.replace(tag.placeholder, tagHtml)
+  })
+  
+  return html
+}
+
+// 处理标签点击（挂载到window供onclick调用）
+if (typeof window !== 'undefined') {
+  window.handleTagClick = function(el) {
+    const resumeId = el.getAttribute('data-resume-id')
+    if (!resumeId) return
+    
+    // 判断是岗位还是简历
+    const isJob = el.classList.contains('job-tag')
+    
+    if (isJob) {
+      // 跳转到岗位详情
+      window.location.hash = `#/jobs/detail/${resumeId}`
+    } else {
+      // 跳转到简历预览
+      window.location.hash = `#/resumes/preview/${resumeId}`
+    }
   }
 }
 
@@ -265,8 +373,41 @@ const switchToSession = async (row) => {
   }
 }
 
+// 删除会话
+const deleteSession = async (row) => {
+  try {
+    const response = await fetch(`/hr/api/v1/ai/session/delete/${row.session_id}`, {
+      method: 'DELETE'
+    })
+    
+    if (response.ok) {
+      const result = await response.json()
+      if (result.code === 200) {
+        ElMessage.success('已删除该对话')
+        // 刷新会话列表
+        fetchSessionList()
+        // 如果删除的是当前会话，重置为新建对话
+        if (sessionId.value === row.session_id) {
+          createNewSession()
+        }
+      }
+    }
+  } catch (error) {
+    console.error('删除会话失败:', error)
+    ElMessage.error('删除会话失败')
+  }
+}
+
 // 新建对话
 const createNewSession = () => {
+  // 如果当前有对话记录，弹出评价
+  if (messages.value.length > 1) {
+    currentConversationId.value = sessionId.value || ''
+    ratingValue.value = 0
+    ratingText.value = ''
+    showRating.value = true
+  }
+  
   sessionId.value = generateUUID()
   localStorage.setItem('current_session_id', sessionId.value)
   messages.value = [
@@ -354,11 +495,26 @@ const handleSend = async () => {
     clearTimeout(updateTimeout)
     messages.value[aiMessageIndex].content = accumulatedText
 
-    // 处理完整响应
-    const finalContent = accumulatedText && !accumulatedText.includes('错误') && !accumulatedText.includes('Exception') 
-      ? accumulatedText 
-      : '抱歉，暂时无法回答您的问题'
-    messages.value[aiMessageIndex].content = finalContent
+    // 处理完整响应 - 提取结构化导航数据
+    let finalContent = accumulatedText
+    let navData = null
+    
+    // 检查是否包含导航数据
+    const navMatch = accumulatedText.match(/__NAV_DATA_START__(.+?)__NAV_DATA_END__/s)
+    if (navMatch) {
+      try {
+        navData = JSON.parse(navMatch[1])
+        // 移除导航数据标记，只保留文本内容
+        finalContent = accumulatedText.replace(navMatch[0], '').trim()
+      } catch (e) {
+        console.error('解析导航数据失败:', e)
+      }
+    }
+    
+    messages.value[aiMessageIndex].content = finalContent || '抱歉，暂时无法回答您的问题'
+    if (navData) {
+      messages.value[aiMessageIndex].navData = navData
+    }
     
     // 刷新会话列表
     fetchSessionList()
@@ -374,6 +530,46 @@ const handleSend = async () => {
       messagesRef.value.scrollTop = messagesRef.value.scrollHeight
     }
   }
+}
+
+// 提交评价
+const submitRating = async () => {
+  if (ratingValue.value === 0) {
+    ElMessage.warning('请先选择评分')
+    return
+  }
+  
+  try {
+    await fetch('/hr/api/v1/monitoring/feedback', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        conversation_id: currentConversationId.value,
+        session_id: sessionId.value,
+        rating: ratingValue.value,
+        feedback_text: ratingText.value || null,
+        feedback_type: 'ai_chat'
+      })
+    })
+    ElMessage.success('评价已提交，感谢您的反馈！')
+  } catch (error) {
+    console.error('提交评价失败:', error)
+    ElMessage.error('提交评价失败')
+  } finally {
+    showRating.value = false
+  }
+}
+
+// 跳转到岗位详情
+const goToJobDetail = (jobId) => {
+  window.location.hash = `#/jobs/detail/${jobId}`
+}
+
+// 跳转到简历预览
+const goToResumePreview = (candidateId) => {
+  window.location.hash = `#/resumes/preview/${candidateId}`
 }
 
 onMounted(() => {
@@ -509,6 +705,101 @@ onMounted(() => {
     line-height: 1.6;
     word-break: break-word;
 
+    // 统一AI回复的字体和排版
+    :deep(h1), :deep(h2), :deep(h3), :deep(h4), :deep(h5), :deep(h6) {
+      font-size: 14px;
+      font-weight: 600;
+      margin: 8px 0 4px 0;
+      color: inherit;
+    }
+
+    :deep(p) {
+      margin: 4px 0;
+      font-size: 14px;
+    }
+
+    :deep(ul), :deep(ol) {
+      margin: 4px 0;
+      padding-left: 20px;
+    }
+
+    :deep(li) {
+      font-size: 14px;
+      margin: 2px 0;
+    }
+
+    :deep(table) {
+      font-size: 13px;
+      margin: 8px 0;
+      border-collapse: collapse;
+    }
+
+    :deep(strong) {
+      font-weight: 600;
+    }
+
+    // 导航跳转标签样式
+    .nav-tag {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      margin: 6px 0;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-size: 13px;
+      border: 1px solid transparent;
+
+      &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      }
+
+      .tag-info {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-wrap: wrap;
+
+        .tag-part {
+          white-space: nowrap;
+        }
+
+        .tag-sep {
+          opacity: 0.4;
+        }
+      }
+
+      .tag-arrow {
+        font-size: 16px;
+        opacity: 0.6;
+        margin-left: 8px;
+      }
+    }
+
+    .resume-tag {
+      background: linear-gradient(135deg, rgba(52, 199, 89, 0.15), rgba(48, 176, 80, 0.1));
+      border-color: rgba(52, 199, 89, 0.3);
+      color: #34c759;
+
+      &:hover {
+        background: linear-gradient(135deg, rgba(52, 199, 89, 0.25), rgba(48, 176, 80, 0.2));
+        border-color: rgba(52, 199, 89, 0.5);
+      }
+    }
+
+    .job-tag {
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(79, 82, 235, 0.1));
+      border-color: rgba(99, 102, 241, 0.3);
+      color: #818cf8;
+
+      &:hover {
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(79, 82, 235, 0.2));
+        border-color: rgba(99, 102, 241, 0.5);
+      }
+    }
+
     .message-keywords {
       margin-top: 8px;
       display: flex;
@@ -520,6 +811,83 @@ onMounted(() => {
         color: rgba(255, 255, 255, 0.9);
         border: none;
       }
+    }
+  }
+}
+
+// 导航按钮区域
+.nav-buttons {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.nav-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nav-section-title {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.nav-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(139, 92, 246, 0.15));
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 12px;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  
+  &:hover {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(139, 92, 246, 0.25));
+    border-color: rgba(99, 102, 241, 0.5);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+  }
+  
+  .nav-card-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+  }
+  
+  .nav-card-info {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.6);
+    white-space: nowrap;
+  }
+  
+  .nav-card-arrow {
+    font-size: 16px;
+    color: rgba(255, 255, 255, 0.4);
+    transition: all 0.2s;
+    margin-left: 8px;
+  }
+  
+  &:hover .nav-card-arrow {
+    color: rgba(255, 255, 255, 0.8);
+    transform: translateX(2px);
+  }
+  
+  &.candidate-card {
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(16, 185, 129, 0.15));
+    border-color: rgba(34, 197, 94, 0.3);
+    
+    &:hover {
+      background: linear-gradient(135deg, rgba(34, 197, 94, 0.25), rgba(16, 185, 129, 0.25));
+      border-color: rgba(34, 197, 94, 0.5);
+      box-shadow: 0 4px 12px rgba(34, 197, 94, 0.2);
     }
   }
 }
@@ -579,6 +947,24 @@ onMounted(() => {
 
     :deep(.el-table__row:hover) {
       background: rgba(64, 158, 255, 0.1);
+    }
+  }
+}
+
+.rating-dialog {
+  .rating-content {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+
+    .rating-stars {
+      display: flex;
+      justify-content: center;
+      padding: 16px 0;
+    }
+
+    .rating-textarea {
+      width: 100%;
     }
   }
 }

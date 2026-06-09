@@ -1,8 +1,16 @@
 <template>
   <div class="metrics-dashboard">
     <div class="page-header">
-      <h1 class="page-title">AI 系统监控</h1>
-      <p class="page-subtitle">实时监控 AI 系统性能和质量指标</p>
+      <div class="header-left">
+        <el-button text @click="$router.push('/ai-center')" class="back-btn">
+          <el-icon><ArrowLeft /></el-icon>
+          返回
+        </el-button>
+        <div class="title-group">
+          <h1 class="page-title">AI 系统监控</h1>
+          <p class="page-subtitle">实时监控 AI 系统性能和质量指标</p>
+        </div>
+      </div>
     </div>
 
     <!-- 质量指标卡片 -->
@@ -146,7 +154,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Search, Warning, CircleCheck, Star, CaretTop, CaretBottom } from '@element-plus/icons-vue'
+import { Search, Warning, CircleCheck, Star, CaretTop, CaretBottom, ArrowLeft } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import axios from 'axios'
 
@@ -254,11 +262,18 @@ const loadTokenUsage = async () => {
     const response = await axios.get('/hr/api/v1/monitoring/token-usage', { params })
     if (response.data.code === 200) {
       const data = response.data.data
-      tokenMetrics.value = data.summary
+      // 合并token数据，保留已有的avg_token_hit_rate
+      tokenMetrics.value = {
+        ...tokenMetrics.value,
+        total_input_tokens: data.summary.total_input_tokens || 0,
+        total_output_tokens: data.summary.total_output_tokens || 0,
+        total_cached_tokens: data.summary.total_cached_tokens || 0,
+        total_tokens: data.summary.total_tokens || 0,
+        estimated_cost: data.summary.estimated_cost || 0
+      }
     }
   } catch (error) {
     console.error('加载Token使用统计失败:', error)
-    ElMessage.error('加载Token使用统计失败')
   }
 }
 
@@ -284,27 +299,30 @@ const updateTrendChart = () => {
       type: 'value',
       max: 1,
       axisLabel: {
-        formatter: '{value}%'
+        formatter: (value) => (value * 100).toFixed(0) + '%'
       }
     },
     series: [
       {
         name: '召回率',
         type: 'line',
-        data: trends.value.map(t => t.recall_rate),
-        smooth: true
+        data: trends.value.map(t => (t.recall_rate || 0)),
+        smooth: true,
+        itemStyle: { color: '#667eea' }
       },
       {
         name: '幻觉率',
         type: 'line',
-        data: trends.value.map(t => t.hallucination_rate),
-        smooth: true
+        data: trends.value.map(t => (t.hallucination_rate || 0)),
+        smooth: true,
+        itemStyle: { color: '#f5576c' }
       },
       {
         name: '准确率',
         type: 'line',
-        data: trends.value.map(t => t.accuracy),
-        smooth: true
+        data: trends.value.map(t => (t.accuracy || 0)),
+        smooth: true,
+        itemStyle: { color: '#4facfe' }
       }
     ]
   }
@@ -373,6 +391,34 @@ onMounted(() => {
 
 .page-header {
   margin-bottom: 32px;
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+
+    .back-btn {
+      flex-shrink: 0;
+      font-size: 14px;
+      color: var(--text-secondary);
+      padding: 8px 12px;
+      border-radius: 8px;
+      transition: all 0.2s;
+
+      &:hover {
+        color: var(--primary-color);
+        background: rgba(99, 102, 241, 0.1);
+      }
+
+      .el-icon {
+        margin-right: 4px;
+      }
+    }
+
+    .title-group {
+      flex: 1;
+    }
+  }
 
   .page-title {
     font-size: 28px;

@@ -2,7 +2,33 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { authApi } from '@/api'
 
+// 检查JWT是否过期
+function isTokenExpired(token) {
+  if (!token) return true
+  try {
+    const parts = token.split('.')
+    if (parts.length !== 3) return true
+    const payload = JSON.parse(atob(parts[1]))
+    if (payload.exp) {
+      const now = Math.floor(Date.now() / 1000)
+      return payload.exp < now
+    }
+    return false
+  } catch (e) {
+    return true
+  }
+}
+
 export const useAuthStore = defineStore('auth', () => {
+  const savedToken = localStorage.getItem('token') || ''
+  const savedUserInfo = localStorage.getItem('userInfo')
+  
+  // 如果token过期，清除本地存储
+  if (savedToken && isTokenExpired(savedToken)) {
+    localStorage.removeItem('token')
+    localStorage.removeItem('userInfo')
+  }
+  
   const token = ref(localStorage.getItem('token') || '')
   const userInfoStr = localStorage.getItem('userInfo')
   const userInfo = ref(userInfoStr && userInfoStr !== 'undefined' ? JSON.parse(userInfoStr) : {})
