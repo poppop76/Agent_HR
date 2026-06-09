@@ -83,6 +83,60 @@ def chat_with_memory(req: ChatQueryRequest,
             
             print(f"[对话] 流式生成结束，共{count}块", flush=True)
             
+            # 提取结构化导航数据并追加
+            from models.job import Job
+            from models.candidate import Candidate
+            import re
+            import json
+            
+            nav_data = {'jobs': [], 'candidates': []}
+            seen_ids = set()
+            
+            # 匹配AI输出的标签格式：[信息1|信息2|信息3|ID]
+            tag_pattern = re.findall(r'\[([^\]]+)\]', full_response)
+            
+            for tag_content in tag_pattern:
+                parts = tag_content.split('|')
+                if len(parts) < 2:
+                    continue
+                
+                # 最后一部分应该是ID
+                try:
+                    item_id = int(parts[-1].strip())
+                    if item_id in seen_ids or item_id >= 100000:
+                        continue
+                    seen_ids.add(item_id)
+                    
+                    # 先尝试查候选人
+                    candidate = db.query(Candidate).filter(Candidate.id == item_id).first()
+                    if candidate:
+                        exp = f"{candidate.work_years}年经验" if candidate.work_years else "无经验"
+                        nav_data['candidates'].append({
+                            'id': candidate.id,
+                            'name': candidate.name,
+                            'age': candidate.age,
+                            'experience': exp,
+                            'education': candidate.education
+                        })
+                        continue
+                    
+                    # 再尝试查岗位
+                    job = db.query(Job).filter(Job.id == item_id).first()
+                    if job:
+                        nav_data['jobs'].append({
+                            'id': job.id,
+                            'name': job.name,
+                            'type': job.job_type,
+                            'salary': job.salary,
+                            'department': job.department
+                        })
+                except:
+                    pass
+            
+            if nav_data['jobs'] or nav_data['candidates']:
+                yield f"\n\n__NAV_DATA_START__{json.dumps(nav_data, ensure_ascii=False)}__NAV_DATA_END__"
+                print(f"[对话] 追加导航数据: {len(nav_data['jobs'])}个岗位, {len(nav_data['candidates'])}个候选人", flush=True)
+            
             # 5. 异步保存对话到记忆系统
             memory_manager.add_message(session_id, "user", req.question, user_id=user_id)
             memory_manager.add_message(session_id, "assistant", full_response, user_id=user_id)
@@ -211,3 +265,23 @@ def get_session_history(req: ChatHistoryRequest,
     except Exception as e:
         print(f"[历史记录] 失败：{str(e)}", flush=True)
         raise HTTPException(status_code=500, detail=f"获取历史记录失败：{str(e)}")
+
+
+@router.delete("/ai/session/delete/{session_id}")
+def delete_session(session_id: str,
+                   db: Session = Depends(get_db)):
+    """删除会话"""
+    try:
+        memory_manager.delete_session(session_id)
+        
+        return Response(
+            content=json.dumps({
+                "code": settings.RES_CODE["200"],
+                "msg": "删除成功",
+                "data": None
+            }, ensure_ascii=False),
+            media_type="application/json"
+        )
+    except Exception as e:
+        print(f"[删除会话] 失败：{str(e)}", flush=True)
+        raise HTTPException(status_code=500, detail=f"删除会话失败：{str(e)}")
