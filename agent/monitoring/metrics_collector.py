@@ -193,12 +193,12 @@ class MetricsCollector:
             summary = TokenUsageSummary(date=today)
             db.add(summary)
         
-        # 更新统计数据
-        summary.total_input_tokens += token_data.get('input_tokens', 0)
-        summary.total_output_tokens += token_data.get('output_tokens', 0)
-        summary.total_cached_tokens += token_data.get('cached_tokens', 0)
-        summary.total_tokens += token_data.get('total_tokens', 0)
-        summary.total_conversations += 1
+        # 更新统计数据（处理None值）
+        summary.total_input_tokens = (summary.total_input_tokens or 0) + token_data.get('input_tokens', 0)
+        summary.total_output_tokens = (summary.total_output_tokens or 0) + token_data.get('output_tokens', 0)
+        summary.total_cached_tokens = (summary.total_cached_tokens or 0) + token_data.get('cached_tokens', 0)
+        summary.total_tokens = (summary.total_tokens or 0) + token_data.get('total_tokens', 0)
+        summary.total_conversations = (summary.total_conversations or 0) + 1
         
         # 成本估算（假设：输入Token $0.001/1K，输出Token $0.002/1K）
         input_cost = token_data.get('input_tokens', 0) * 0.001 / 1000
