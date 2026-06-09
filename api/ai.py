@@ -597,6 +597,8 @@ def chat_query(req: ChatQueryRequest,
                db: Session = Depends(get_db)):
     """对话式查询（流式输出）"""
     from agent.react_agent import ReactAgent
+    from models.job import Job
+    from models.candidate import Candidate
 
     try:
         print(f"[对话] 收到查询: {req.question[:50]}...", flush=True)
@@ -604,11 +606,20 @@ def chat_query(req: ChatQueryRequest,
 
         def generate():
             print("[对话] 开始流式生成...", flush=True)
+            full_content = ""
             count = 0
             for chunk in agent.execute_stream(query=req.question):
                 count += 1
-                print(f"[对话] 输出第{count}块: {repr(chunk[:50])}", flush=True)
+                full_content += chunk
                 yield chunk
+            
+            # 流式输出结束后，提取结构化数据并追加
+            nav_data = extract_nav_data(full_content, db)
+            if nav_data['jobs'] or nav_data['candidates']:
+                # 使用特殊分隔符标记JSON数据
+                yield f"\n\n__NAV_DATA_START__{json.dumps(nav_data, ensure_ascii=False)}__NAV_DATA_END__"
+                print(f"[对话] 追加导航数据: {len(nav_data['jobs'])}个岗位, {len(nav_data['candidates'])}个候选人", flush=True)
+            
             print(f"[对话] 流式生成结束，共{count}块", flush=True)
 
         return StreamingResponse(generate(), media_type="text/plain; charset=utf-8")
@@ -617,6 +628,58 @@ def chat_query(req: ChatQueryRequest,
         print(f"[对话] 失败: {str(e)}", flush=True)
         print(traceback.format_exc(), flush=True)
         raise HTTPException(status_code=500, detail=f"AI 调用失败: {str(e)}")
+
+
+def extract_nav_data(content: str, db) -> dict:
+    """从AI回复内容中提取岗位/简历引用，返回结构化数据"""
+    import re
+    
+    result = {'jobs': [], 'candidates': []}
+    seen_ids = set()
+    
+    # 匹配AI输出的标签格式：[信息1|信息2|信息3|ID]
+    # 例如：[郑睿豪|21岁|Java开发工程师|13]
+    tag_pattern = re.findall(r'\[([^\]]+)\]', content)
+    
+    for tag_content in tag_pattern:
+        parts = tag_content.split('|')
+        if len(parts) < 2:
+            continue
+        
+        # 最后一部分应该是ID
+        try:
+            item_id = int(parts[-1].strip())
+            if item_id in seen_ids or item_id >= 100000:
+                continue
+            seen_ids.add(item_id)
+            
+            # 先尝试查候选人
+            candidate = db.query(Candidate).filter(Candidate.id == item_id).first()
+            if candidate:
+                exp = f"{candidate.work_years}年经验" if candidate.work_years else "无经验"
+                result['candidates'].append({
+                    'id': candidate.id,
+                    'name': candidate.name,
+                    'age': candidate.age,
+                    'experience': exp,
+                    'education': candidate.education
+                })
+                continue
+            
+            # 再尝试查岗位
+            job = db.query(Job).filter(Job.id == item_id).first()
+            if job:
+                result['jobs'].append({
+                    'id': job.id,
+                    'name': job.name,
+                    'type': job.job_type,
+                    'salary': job.salary,
+                    'department': job.department
+                })
+        except:
+            pass
+    
+    return result
 
 
 # ==================== 智能报告生成 ====================
